@@ -11,3 +11,5 @@ file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
 include_directories(${CMAKE_SOURCE_DIR})
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ntdll)

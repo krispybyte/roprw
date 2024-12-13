@@ -1,7 +1,5 @@
 #pragma once
-#include <cstdint>
-#include <Windows.h>
-#include <exception>
+#include "kernel_addresses.hpp"
 
 namespace Driver
 {
@@ -23,10 +21,11 @@ namespace Driver
 
 		HANDLE DriverHandle = NULL;
         const std::uint32_t WritePrimitiveDispatchCode = 0x81000000;
-
+	protected:
+		std::uintptr_t NtoskrnlBase = NULL;
 		Athpexnt()
 		{
-			this->DriverHandle = CreateFileA("\\\\.\\ATHpEx",
+			DriverHandle = CreateFileA("\\\\.\\ATHpEx",
 				GENERIC_READ,
 				NULL,
 				NULL,
@@ -35,13 +34,17 @@ namespace Driver
 				NULL
 			);
 
-			if (this->DriverHandle == INVALID_HANDLE_VALUE)
+			if (DriverHandle == INVALID_HANDLE_VALUE)
 				throw std::exception("Failed opening a handle to the driver");
+
+			NtoskrnlBase = Driver::GetKernelModuleBase();
+			if (!NtoskrnlBase)
+				throw std::exception("Failed getting ntoskrnl.exe module base");
 		}
 	public:
 		~Athpexnt()
 		{
-			CloseHandle(this->DriverHandle);
+			CloseHandle(DriverHandle);
 		}
 
 		static Athpexnt* GetInstance();
@@ -57,7 +60,7 @@ namespace Driver
             );
 
             std::uint32_t BytesReturned = 0;
-            if (!DeviceIoControl(this->DriverHandle,
+            if (!DeviceIoControl(DriverHandle,
                 WritePrimitiveDispatchCode,
                 reinterpret_cast<const void*>(&IoctlPacketData),
                 sizeof(MemoryWriteIoctlPacket),
