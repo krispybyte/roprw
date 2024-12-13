@@ -13,6 +13,7 @@ int main()
 
     // Causes any calls of NtShutdownSystem to redirect to NtAllocateUuids
     KernelCaller.RedirectCallByName("NtShutdownSystem", "NtAllocateUuids");
+    KernelCaller.DisableRedirectByName("NtShutdownSystem");
 
     return EXIT_SUCCESS;
 }

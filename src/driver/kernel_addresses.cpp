@@ -2,6 +2,9 @@
 
 const std::uint32_t Driver::GetKernelFunctionOffset(const std::string_view& Name)
 {
+    if (Name.empty())
+        return NULL;
+
     char SysDir[MAX_PATH];
     GetSystemWindowsDirectoryA(SysDir, MAX_PATH);
 
