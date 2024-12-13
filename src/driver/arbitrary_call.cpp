@@ -26,9 +26,6 @@ bool Driver::ArbitraryCaller::RedirectCallByName(const std::string_view& Origina
 	if (!OriginalFunctionAddress || !NewFunctionAddress)
 		return false;
 
-	std::printf("OriginalFunctionAddress:\t0x%p\n", OriginalFunctionAddress);
-	std::printf("NewFunctionAddress:\t0x%p\n", NewFunctionAddress);
-
 	const bool Success = RedirectCall(OriginalFunctionAddress, NewFunctionAddress);
 	return Success;
 }
