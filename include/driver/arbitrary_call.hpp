@@ -14,11 +14,14 @@ namespace Driver
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	// NewFunction arg
 		};
 	public:
-		bool RedirectCall(void* OriginalFunction, const void* NewFunction);
-		bool RedirectCallByName(const std::string_view& OriginalFunctionName, const std::string_view& NewFunctionName);
-		bool DisableRedirect(void* OriginalFunction);
-		bool DisableRedirectByName(const std::string_view& OriginalFunctionName);
 		ArbitraryCaller() {}
 		~ArbitraryCaller() = default;
+
+		bool RedirectCall(void* OriginalFunction, const void* NewFunction);
+		bool RedirectCall(void* OriginalFunction, const void* NewFunction, void* Arg1, void* Arg2, void* Arg3);
+		bool RedirectCallByName(const std::string_view& OriginalFunctionName, const std::string_view& NewFunctionName);
+		bool RedirectCallByName(const std::string_view& OriginalFunctionName, const std::string_view& NewFunctionName, void* Arg1, void* Arg2, void* Arg3);
+		bool DisableRedirect(void* OriginalFunction);
+		bool DisableRedirectByName(const std::string_view& OriginalFunctionName);
 	};
 }
