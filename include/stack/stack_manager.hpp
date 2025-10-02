@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string_view>
+#include <include/driver/kernel_addresses.hpp>
 
 class StackManager
 {
@@ -9,12 +10,14 @@ private:
 	std::uintptr_t KernelModuleBase = NULL;
 	std::uintptr_t StackAddress = NULL;
 	std::size_t StackSize = NULL;
+    void ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue);
+
 public:
 	StackManager(const std::uintptr_t _KernelModuleBase, const std::uintptr_t _StackAddress, const size_t _StackSize = 0x3000)
 		: KernelModuleBase(_KernelModuleBase), StackAddress(_StackAddress), StackSize(_StackSize)
 	{
 		Stack = new std::vector<uint64_t>;
-		Stack->push_back(StackAddress + StackSize);
+		//Stack->push_back(StackAddress + StackSize);
 	}
 
 	~StackManager()
@@ -27,6 +30,7 @@ public:
     void AddGadget(const std::uint64_t GadgetOffset);
     void AddValue(const std::uint64_t Value);
     void AddPadding(const std::size_t PaddingSize = 8);
+    void ModifyThreadStartAddress(const std::uint64_t NewStartAddress);
 
     template<typename... Args>
     void AddFunctionCall(const std::string_view& FunctionName, Args&&... args)
