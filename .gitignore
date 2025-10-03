@@ -2,3 +2,6 @@ build/
 output/
 cmake/
 .vs/
+scripts/Windows*
+scripts/*.json
+scripts/http.txt
