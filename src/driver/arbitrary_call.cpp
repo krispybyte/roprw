@@ -32,8 +32,6 @@ bool Driver::ArbitraryCaller::RedirectCall(void* OriginalFunction, const void* N
 		0x48, 0x89, 0x5C, 0x24, 0x28,										// mov [rsp+0x28], rbx
 		0x48, 0xBB, 0xEF, 0xBE, 0xAD, 0xDE, 0xEF, 0xBE, 0xAD, 0xDE,			// mov rbx, Arg3
 		0x48, 0x89, 0x5C, 0x24, 0x30,										// mov [rsp+0x30], rbx
-		//0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,									// jmp [rip]
-		//0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 
 		0x48, 0xB8, 0xEF, 0xBE, 0xAD, 0xDE, 0xEF, 0xBE, 0xAD, 0xDE,			// mov rax, NewFunction
 		0xFF, 0xD0,															// call rax
@@ -50,10 +48,6 @@ bool Driver::ArbitraryCaller::RedirectCall(void* OriginalFunction, const void* N
 	std::memcpy(ShellcodeBuffer + 4 + 17, &Arg2, sizeof(void*));
 	std::memcpy(ShellcodeBuffer + 4 + 32, &Arg3, sizeof(void*));
 	std::memcpy(ShellcodeBuffer + sizeof(ShellcodeTemplate) - 15, &NewFunction, sizeof(void*));
-	//std::memcpy(ShellcodeBuffer + sizeof(ShellcodeTemplate) - sizeof(void*),
-	//	&NewFunction,
-	//	sizeof(void*)
-	//);
 
 	const bool Success = WritePhysicalMemory(OriginalFunction, ShellcodeBuffer, sizeof(ShellcodeTemplate));
 	delete[] ShellcodeBuffer;

