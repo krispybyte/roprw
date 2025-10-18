@@ -33,10 +33,6 @@ int main()
 
     const void* NtShutdownSystem = GetProcAddress(LoadLibraryA("ntdll.dll"), "NtShutdownSystem");
 
-    //KernelCaller.RedirectCall(
-    //    (void*)(Driver::GetKernelModuleBase() + (std::uint64_t)Driver::GetKernelFunctionOffset("NtShutdownSystem")),
-    //    (void*)(Driver::GetKernelModuleBase() + 0x345F40)
-    //);
     KernelCaller.RedirectCallByName("NtShutdownSystem", "MmAllocateContiguousMemory");
     void* DummyMemoryAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
     void* IntervalArgAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x20, (void*)MAXULONG64);
