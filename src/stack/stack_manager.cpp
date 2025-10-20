@@ -1,13 +1,21 @@
 #include <include/stack/stack_manager.hpp>
 
-std::uint64_t* StackManager::GetStackBuffer()
+std::uint64_t* StackManager::GetStackBuffer(const bool IncludeInitStack)
 {
-	return Stack->data();
+	const std::size_t InitStackSize = IncludeInitStack
+		? NULL
+		: this->InitStackSize / sizeof(std::uint64_t);
+
+	return Stack->data() + (std::uint64_t)InitStackSize;
 }
 
-std::size_t StackManager::GetStackSize()
+std::size_t StackManager::GetStackSize(const bool IncludeInitStack)
 {
-	return Stack->size() * sizeof(std::uint64_t);
+	const std::size_t InitStackSize = IncludeInitStack
+		? NULL
+		: this->InitStackSize;
+
+	return Stack->size() * sizeof(std::uint64_t) - InitStackSize;
 }
 
 void StackManager::AddGadget(const std::uint64_t GadgetOffset, const std::string_view& GadgetLogName)
@@ -29,6 +37,14 @@ void StackManager::AddPadding(const std::size_t PaddingSize)
 	// right now it's just hardcoded.
 	for (int i = 0; i < (PaddingSize / sizeof(std::uint64_t)); i++)
 		this->AddValue(0xC0FEBABEC0FEBABE, "Padding");
+}
+
+void StackManager::ChainStack(StackManager* NewStack)
+{
+	if (!NewStack)
+		return;
+
+	this->Stack->insert(this->Stack->end(), NewStack->Stack->begin(), NewStack->Stack->end());
 }
 
 void StackManager::ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue)

