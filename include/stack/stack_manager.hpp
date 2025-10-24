@@ -11,7 +11,6 @@ private:
 	std::uintptr_t KernelModuleBase = NULL;
 	std::uintptr_t StackAllocAddress = NULL;
 	std::size_t StackSizeLimit = NULL;
-    void ChainStack(StackManager* NewStack);
     void ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue);
 
 public:

