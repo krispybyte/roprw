@@ -33,7 +33,8 @@ public:
     void AddPadding(const std::size_t PaddingSize = 8);
     void ModifyThreadStartAddress(const std::uint64_t NewStartAddress);
     void ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBase, const std::uint64_t NewStackLimit);
-    void PivotStackIntoEthread(StackManager* StackToPivot, void* StackLimitStoreAddress, void* CurrentStackOffsetAddress, void* DummyMemoryAllocation);
+    void PivotToNewStack(StackManager* StackToPivot);
+    void LoopBack();
 
     template<typename... Args>
     void AddFunctionCall(const std::string_view& FunctionName, Args&&... args)
