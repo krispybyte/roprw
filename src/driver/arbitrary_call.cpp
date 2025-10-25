@@ -19,42 +19,6 @@ bool Driver::ArbitraryCaller::RedirectCall(void* OriginalFunction, const void* N
 	return Success;
 }
 
-bool Driver::ArbitraryCaller::RedirectCall(void* OriginalFunction, const void* NewFunction, void* Arg1, void* Arg2, void* Arg3)
-{
-	const std::uint8_t ShellcodeTemplate[] =
-	{
-		// sub rsp, 0x18
-		0x48, 0x83, 0xEC, 0x18,
-
-		0x48, 0xBB, 0xEF, 0xBE, 0xAD, 0xDE, 0xEF, 0xBE, 0xAD, 0xDE,			// mov rbx, Arg1
-		0x48, 0x89, 0x5C, 0x24, 0x20,										// mov [rsp+0x20], rbx
-		0x48, 0xBB, 0xEF, 0xBE, 0xAD, 0xDE, 0xEF, 0xBE, 0xAD, 0xDE,			// mov rbx, Arg2
-		0x48, 0x89, 0x5C, 0x24, 0x28,										// mov [rsp+0x28], rbx
-		0x48, 0xBB, 0xEF, 0xBE, 0xAD, 0xDE, 0xEF, 0xBE, 0xAD, 0xDE,			// mov rbx, Arg3
-		0x48, 0x89, 0x5C, 0x24, 0x30,										// mov [rsp+0x30], rbx
-
-		0x48, 0xB8, 0xEF, 0xBE, 0xAD, 0xDE, 0xEF, 0xBE, 0xAD, 0xDE,			// mov rax, NewFunction
-		0xFF, 0xD0,															// call rax
-
-		// add rsp, 0x18
-		0x48, 0x83, 0xC4, 0x18,
-
-		0xC3 // ret
-	};
-
-	char* ShellcodeBuffer = new char[sizeof(ShellcodeTemplate)];
-	std::memcpy(ShellcodeBuffer, ShellcodeTemplate, sizeof(ShellcodeTemplate));
-	std::memcpy(ShellcodeBuffer + 4 + 2, &Arg1, sizeof(void*));
-	std::memcpy(ShellcodeBuffer + 4 + 17, &Arg2, sizeof(void*));
-	std::memcpy(ShellcodeBuffer + 4 + 32, &Arg3, sizeof(void*));
-	std::memcpy(ShellcodeBuffer + sizeof(ShellcodeTemplate) - 15, &NewFunction, sizeof(void*));
-
-	const bool Success = WritePhysicalMemory(OriginalFunction, ShellcodeBuffer, sizeof(ShellcodeTemplate));
-	delete[] ShellcodeBuffer;
-
-	return Success;
-}
-
 bool Driver::ArbitraryCaller::RedirectCallByName(const std::string_view& OriginalFunctionName, const std::string_view& NewFunctionName)
 {
 	void* OriginalFunctionAddress = reinterpret_cast<void*>(NtoskrnlBase + Driver::GetKernelFunctionOffset(OriginalFunctionName.data()));
@@ -63,17 +27,6 @@ bool Driver::ArbitraryCaller::RedirectCallByName(const std::string_view& Origina
 		return false;
 
 	const bool Success = RedirectCall(OriginalFunctionAddress, NewFunctionAddress);
-	return Success;
-}
-
-bool Driver::ArbitraryCaller::RedirectCallByName(const std::string_view& OriginalFunctionName, const std::string_view& NewFunctionName, void* Arg1, void* Arg2, void* Arg3)
-{
-	void* OriginalFunctionAddress = reinterpret_cast<void*>(NtoskrnlBase + Driver::GetKernelFunctionOffset(OriginalFunctionName.data()));
-	void* NewFunctionAddress = reinterpret_cast<void*>(NtoskrnlBase + Driver::GetKernelFunctionOffset(NewFunctionName.data()));
-	if (!OriginalFunctionAddress || !NewFunctionAddress)
-		return false;
-
-	const bool Success = RedirectCall(OriginalFunctionAddress, NewFunctionAddress, Arg1, Arg2, Arg3);
 	return Success;
 }
 

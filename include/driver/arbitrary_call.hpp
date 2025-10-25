@@ -1,6 +1,7 @@
 #pragma once
 #include <include/driver/primitives.hpp>
 #include <unordered_map>
+#include <include/globals.hpp>
 
 namespace Driver
 {
@@ -13,15 +14,67 @@ namespace Driver
 			0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,				// jmp [rip]
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	// NewFunction arg
 		};
-	public:
-		ArbitraryCaller() {}
-		~ArbitraryCaller() = default;
+
+		std::uintptr_t KmFunctionAddress = NULL;
+		std::uintptr_t UmFunctionAddress = NULL;
 
 		bool RedirectCall(void* OriginalFunction, const void* NewFunction);
-		bool RedirectCall(void* OriginalFunction, const void* NewFunction, void* Arg1, void* Arg2, void* Arg3);
 		bool RedirectCallByName(const std::string_view& OriginalFunctionName, const std::string_view& NewFunctionName);
-		bool RedirectCallByName(const std::string_view& OriginalFunctionName, const std::string_view& NewFunctionName, void* Arg1, void* Arg2, void* Arg3);
 		bool DisableRedirect(void* OriginalFunction);
 		bool DisableRedirectByName(const std::string_view& OriginalFunctionName);
+	public:
+		ArbitraryCaller(const std::string_view& FunctionToPatch, const std::string_view& FunctionModuleName = "ntdll.dll")
+		{
+			const HMODULE LibraryAddress = LoadLibraryA(FunctionModuleName.data());
+			if (!LibraryAddress)
+			{
+				std::exception("Failed to load library for arbitrary caller");
+				return;
+			}
+
+			this->UmFunctionAddress = reinterpret_cast<std::uintptr_t>(GetProcAddress(LibraryAddress, FunctionToPatch.data()));
+			if (!this->UmFunctionAddress)
+			{
+				std::exception("Failed to locate arbitrary caller usermode function address");
+				return;
+			}
+
+			this->KmFunctionAddress = NtoskrnlBase + Driver::GetKernelFunctionOffset(FunctionToPatch.data());
+			if (!this->KmFunctionAddress)
+			{
+				std::exception("Failed to locate arbitrary caller kernel function address");
+				return;
+			}
+		}
+		~ArbitraryCaller() = default;
+
+		template<typename ReturnType, typename... Args>
+		ReturnType CallByAddress(void* FunctionAddress, Args... args)
+		{
+			// Ensure the number of arguments does not exceed 9, since our
+			// function which is currently NtReadFileScatter only takes that amount.
+			static_assert(sizeof...(args) <= 9, "CallKernelFunction supports up to 9 arguments only");
+
+			this->RedirectCall(reinterpret_cast<void*>(this->KmFunctionAddress), FunctionAddress);
+
+			using FuncPtr = ReturnType(*)(Args...);
+			const ReturnType ReturnValue = reinterpret_cast<FuncPtr>(this->UmFunctionAddress)(args...);
+
+			this->DisableRedirect(reinterpret_cast<void*>(this->KmFunctionAddress));
+
+			return ReturnValue;
+		}
+
+		template<typename ReturnType, typename... Args>
+		ReturnType Call(const std::string_view& FunctionName, Args... args)
+		{
+			void* FunctionAddress = reinterpret_cast<void*>(NtoskrnlBase + Driver::GetKernelFunctionOffset(FunctionName.data()));
+			if (!FunctionAddress)
+				return ReturnType();
+
+			ReturnType ReturnValue = this->CallByAddress<ReturnType, Args...>(FunctionAddress, args...);
+
+			return ReturnValue;
+		}
 	};
 }

