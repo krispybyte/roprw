@@ -82,10 +82,5 @@ public:
             this->AddGadget(0x20043b, "ret (align)");
 
         this->AddGadget(FunctionAddress, "Function to call address");
-        this->AddGadget(0xbac76a, "add rsp, 0x20; ret;");
-        this->AddValue(0, "Shadow space 1");
-        this->AddValue(0, "Shadow space 2");
-        this->AddValue(0, "Shadow space 3");
-        this->AddValue(0, "Shadow space 4");
     }
 };
