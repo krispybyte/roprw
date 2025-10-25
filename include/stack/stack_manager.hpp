@@ -8,24 +8,16 @@ class StackManager
 protected:
 	std::vector<std::uint64_t>* Stack = nullptr;
 private:
-    StackManager* InitStackManager = nullptr;
-    std::size_t InitStackSize = NULL;
 	std::uintptr_t KernelModuleBase = NULL;
+	std::uintptr_t StackAllocAddress = NULL;
 	std::size_t StackSizeLimit = NULL;
-    void ChainStack(StackManager* NewStack);
     void ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue);
 
 public:
-	StackManager(const std::uintptr_t _KernelModuleBase, StackManager* _InitStackManager = nullptr, const size_t _StackSizeLimit = 0x2000)
-		: KernelModuleBase(_KernelModuleBase), InitStackManager(_InitStackManager), StackSizeLimit(_StackSizeLimit)
+	StackManager(const std::uintptr_t _KernelModuleBase, const std::uintptr_t _StackAllocAddress, const size_t _StackSizeLimit = 0x2000)
+		: KernelModuleBase(_KernelModuleBase), StackAllocAddress(_StackAllocAddress), StackSizeLimit(_StackSizeLimit)
 	{
 		Stack = new std::vector<std::uint64_t>;
-
-        // If an init stack was specified, we must add it prior to the rest of our stack.
-        if (InitStackManager) {
-            this->ChainStack(InitStackManager);
-            this->InitStackSize = this->InitStackManager->GetStackSize();
-        }
 	}
 
 	~StackManager()
@@ -33,13 +25,16 @@ public:
 		delete[] Stack;
 	}
 
-    std::uint64_t* GetStackBuffer(const bool IncludeInitStack = false);
-    std::size_t GetStackSize(const bool IncludeInitStack = false);
+    std::uint64_t* GetStackBuffer();
+    std::size_t GetStackSize();
     void AddGadget(const std::uint64_t GadgetOffset, const std::string_view& GadgetLogName);
     void AddValue(const std::uint64_t Value, const std::string_view& ValueLogName);
     void AddPadding(const std::size_t PaddingSize = 8);
+    void ReadIntoRcx(const std::uint64_t ReadAddress);
     void ModifyThreadStartAddress(const std::uint64_t NewStartAddress);
     void ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBase, const std::uint64_t NewStackLimit);
+    void PivotToNewStack(StackManager* StackToPivot);
+    void LoopBack();
 
     template<typename... Args>
     void AddFunctionCall(const std::string_view& FunctionName, Args&&... args)
