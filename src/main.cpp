@@ -60,6 +60,13 @@ int main()
     if (!MainStackAllocation || !InitStackAllocation || !PivotDataAllocation || !Globals::CurrentStackOffsetAddress || !Globals::StackLimitStoreAddress)
         return EXIT_FAILURE;
 
+    // Zero out stack allocation
+    KernelCaller.RedirectCallByName("NtShutdownSystem", "RtlZeroMemory");
+    reinterpret_cast<void* (*)(void*, size_t)>(NtShutdownSystem)(MainStackAllocation, 0x6000);
+    reinterpret_cast<void* (*)(void*, size_t)>(NtShutdownSystem)(InitStackAllocation, 0x6000);
+    reinterpret_cast<void* (*)(void*, size_t)>(NtShutdownSystem)(Globals::CurrentStackOffsetAddress, 0x8);
+    KernelCaller.DisableRedirectByName("NtShutdownSystem");
+
     // Create usermode event
     const wchar_t* EventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT";
     HANDLE UmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT");
