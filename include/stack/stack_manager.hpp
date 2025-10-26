@@ -78,8 +78,9 @@ public:
             this->AddPadding(0x8);
         }
 
+        // Align stack to 16 bytes prior to performing a function call.
         if (this->GetStackSize() % 16 != 0)
-            this->AddGadget(0x20043b, "ret (align)");
+            this->AddGadget(0x20043b, "ret;");
 
         this->AddGadget(FunctionAddress, "Function to call address");
     }
