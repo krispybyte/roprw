@@ -12,7 +12,7 @@ struct PivotData
     uint8_t Padding1[0x10];
     void* NewRsp;           // Offset 0x10: New stack pointer
     void* NewRbp;           // Offset 0x18: New base pointer
-    uint8_t Padding3[0x30];
+    uint8_t Padding2[0x30];
     void* JumpAddress;      // Offset 0x50: Jump target (rdx)
 };
 #if defined(__GNUC__) || defined(__clang__)
