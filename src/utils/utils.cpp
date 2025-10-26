@@ -79,7 +79,7 @@ std::vector<std::uintptr_t> Utils::FindLegitimateKernelThreadStartAddresses()
             for (ULONG i = 0; i < SystemProcessInfo->NumberOfThreads; ++i)
             {
                 // Thread addresses in the kernel address space are high. A simple check can filter out invalid entries.
-                if ((uintptr_t)SystemThreadInformation[i].StartAddress > 0x7FFFFFFFFFFF)
+                if ((std::uintptr_t)SystemThreadInformation[i].StartAddress > 0x7FFFFFFFFFFF)
                     LegitimateStartAddresses.push_back(reinterpret_cast<std::uintptr_t>(SystemThreadInformation[i].StartAddress));
             }
             // Found the system process, no need to continue
