@@ -97,7 +97,7 @@ int main()
     // Open handle to usermode event in the kernel
     InitStackManager.AddFunctionCall("RtlInitUnicodeString", (std::uint64_t)DestinationStringArg, (std::uint64_t)SourceStringArg);
     InitStackManager.AddFunctionCall("ZwOpenEvent", (std::uint64_t)OutputHandleArg, EVENT_MODIFY_STATE | SYNCHRONIZE, (std::uint64_t)ObjectAttributeArg);
-    InitStackManager.PivotToNewStack(&MainStackManager);
+    InitStackManager.PivotToNewStack(MainStackManager);
 
     // set first arg
     MainStackManager.ReadIntoRcx((std::uint64_t)OutputHandleArg);

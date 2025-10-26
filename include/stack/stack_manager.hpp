@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <vector>
 #include <string_view>
 #include <include/driver/kernel_addresses.hpp>
@@ -6,7 +7,7 @@
 class StackManager
 {
 protected:
-	std::vector<std::uint64_t>* Stack = nullptr;
+    std::unique_ptr<std::vector<std::uint64_t>> Stack;
 private:
 	std::uintptr_t KernelModuleBase = NULL;
 	std::uintptr_t StackAllocAddress = NULL;
@@ -17,12 +18,7 @@ public:
 	StackManager(const std::uintptr_t _KernelModuleBase, const std::uintptr_t _StackAllocAddress, const size_t _StackSizeLimit = 0x2000)
 		: KernelModuleBase(_KernelModuleBase), StackAllocAddress(_StackAllocAddress), StackSizeLimit(_StackSizeLimit)
 	{
-		Stack = new std::vector<std::uint64_t>;
-	}
-
-	~StackManager()
-	{
-		delete[] Stack;
+        Stack = std::make_unique<std::vector<std::uint64_t>>();
 	}
 
     std::uint64_t* GetStackBuffer();
@@ -33,7 +29,7 @@ public:
     void ReadIntoRcx(const std::uint64_t ReadAddress);
     void ModifyThreadStartAddress(const std::uint64_t NewStartAddress);
     void ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBase, const std::uint64_t NewStackLimit);
-    void PivotToNewStack(StackManager* StackToPivot);
+    void PivotToNewStack(StackManager& StackToPivot);
     void LoopBack();
 
     template<typename... Args>

