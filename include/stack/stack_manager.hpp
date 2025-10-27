@@ -27,6 +27,13 @@ public:
     void AddValue(const std::uint64_t Value, const std::string_view& ValueLogName);
     void AddPadding(const std::size_t PaddingSize = 8);
     void ReadIntoRcx(const std::uint64_t ReadAddress);
+    void ReadRaxIntoRax();
+    void PivotToR11();
+    void MovRaxIntoR9();
+    void SetR8(const std::uint64_t NewR8Value);
+    void SetRdx(const std::uint64_t NewRdxValue);
+    void SetRcxRdx(const std::uint64_t NewRcxValue, const std::uint64_t NewRdxValue);
+    void SetRaxRcxRdx(const std::uint64_t NewRaxValue, const std::uint64_t NewRcxValue, const std::uint64_t NewRdxValue);
     void ModifyThreadStartAddress(const std::uint64_t NewStartAddress);
     void ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBase, const std::uint64_t NewStackLimit);
     void PivotToNewStack(StackManager& StackToPivot);

@@ -102,14 +102,10 @@ int main()
     // set first arg
     MainStackManager.ReadIntoRcx((std::uint64_t)OutputHandleArg);
     // set second arg
-    MainStackManager.AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
-    MainStackManager.AddPadding(0x10);
-    MainStackManager.AddValue(TRUE, "SecondArg");
-    MainStackManager.AddPadding(0x8);
+    MainStackManager.SetRdx(TRUE);
     // set third arg
-    MainStackManager.AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-    MainStackManager.AddValue(NULL, "ThirdArg");
-    MainStackManager.AddPadding(0x28);
+    MainStackManager.SetR8(NULL);
+
     MainStackManager.AddFunctionCall("ZwWaitForSingleObject");
     MainStackManager.LoopBack();
 
