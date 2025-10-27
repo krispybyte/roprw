@@ -31,6 +31,7 @@ public:
     void PivotToR11();
     void MovRaxIntoR9();
     void SetR8(const std::uint64_t NewR8Value);
+    void SetR9(const std::uint64_t NewR9Value);
     void SetRdx(const std::uint64_t NewRdxValue);
     void SetRcxRdx(const std::uint64_t NewRcxValue, const std::uint64_t NewRdxValue);
     void SetRaxRcxRdx(const std::uint64_t NewRaxValue, const std::uint64_t NewRcxValue, const std::uint64_t NewRdxValue);
@@ -38,6 +39,7 @@ public:
     void ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBase, const std::uint64_t NewStackLimit);
     void PivotToNewStack(StackManager& StackToPivot);
     void LoopBack();
+    void AlignStack();
 
     template<typename... Args>
     void AddFunctionCall(const std::string_view& FunctionName, Args&&... args)
@@ -50,40 +52,20 @@ public:
         {
             std::uint64_t ConvertedArgs[] = { static_cast<std::uint64_t>(args)... };
 
-            // Setting up the fourth gadget here, since there is no "pop r9; ret;" gadget universally.
-            // this gadget requires us to set up both r8 and rcx correctly, so we will just do this before
-            // all other args.
+            // Setting up the fourth gadget here, this gadget requires us to set up both r8 and rcx
+            // correctly, so we will be performing this before setting the rest of the arguments.
             if (ArgCount >= 4)
-            {
-                this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-                this->AddValue(0, "set r8 to 0");
-                this->AddPadding(0x28);
-                this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
-                this->AddPadding(0x8);
-                this->AddValue(ConvertedArgs[3], "FourthArg");
-                this->AddPadding(0x10);
-                this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
-            }
+                this->SetR9(ConvertedArgs[3]);
 
             if (ArgCount >= 3)
-            {
-                this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-                this->AddValue(ConvertedArgs[2], "ThirdArg");
-                this->AddPadding(0x28);
-            }
+                this->SetR8(ConvertedArgs[2]);
 
-            // If we have any args, we can place a value into rcx (arg1) and rdx (arg2) using a single gadget.
-            // The reason this is done instead of a 'pop rcx; ret;' and `pop rdx; ret;` is described in issue #12 on GitHub.
-            this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
-            this->AddPadding(0x8);
-            this->AddValue(ConvertedArgs[0], "FirstArg");
-            this->AddValue(ConvertedArgs[1], "SecondArg");
-            this->AddPadding(0x8);
+            // If we have any args, we place a value into rcx (arg1) and rdx (arg2) using a single gadget.
+            this->SetRcxRdx(ConvertedArgs[0], ConvertedArgs[1]);
         }
 
         // Align stack to 16 bytes prior to performing a function call.
-        if (this->GetStackSize() % 16 != 0)
-            this->AddGadget(0x20043b, "ret;");
+        this->AlignStack();
 
         this->AddGadget(FunctionAddress, "Function to call address");
     }

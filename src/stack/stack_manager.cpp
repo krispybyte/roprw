@@ -77,6 +77,13 @@ void StackManager::SetR8(const std::uint64_t NewR8Value)
     this->AddPadding(0x28);
 }
 
+void StackManager::SetR9(const std::uint64_t NewR9Value)
+{
+    this->SetR8(0);
+    this->SetRcxRdx(NewR9Value, 0);
+    this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
+}
+
 void StackManager::SetRdx(const std::uint64_t NewRdxValue)
 {
     this->AddGadget(0xbac765, "mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
@@ -215,4 +222,10 @@ void StackManager::PivotToNewStack(StackManager& NewStack)
 void StackManager::LoopBack()
 {
     this->PivotToNewStack(*this);
+}
+
+void StackManager::AlignStack()
+{
+    if (this->GetStackSize() % 16 != 0)
+        this->AddGadget(0x20043b, "ret;");
 }
