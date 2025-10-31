@@ -10,4 +10,5 @@ namespace Utils
 	std::uintptr_t FindRandomValidThreadAddress(const int MinimumDuplicates = 2);
 	std::string GetWindowsDisplayVersion();
 	DWORD GetPidByName(const std::string& ProcessName);
+	std::uintptr_t GetModuleBaseAddress(DWORD Pid, const std::string& ModuleName);
 }

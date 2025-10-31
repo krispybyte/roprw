@@ -134,14 +134,9 @@ int main()
     InitStackManager.ReadIntoRcx(reinterpret_cast<std::uint64_t>(KernelSharedMemoryAllocation) + offsetof(SharedMemory, TargetPid));
     InitStackManager.SetRdx((std::uint64_t)GameEProcessOutputArg);
     InitStackManager.AddFunctionCall("PsLookupProcessByProcessId");
-    MainStackManager.SignalUsermode(KmOutputHandleArg);
+    InitStackManager.SignalUsermode(KmOutputHandleArg);
 
     InitStackManager.PivotToNewStack(MainStackManager);
-
-    void* ReadBuffer = malloc(4096);
-
-    SharedMem->WriteSrcAddress = 0x7ff7455f0000;
-    SharedMem->WriteDstAddress = (std::uint64_t)ReadBuffer;
 
     MainStackManager.AwaitUsermode(UmOutputHandleArg);
     // Copy user shared memory into our buffer
@@ -244,14 +239,19 @@ int main()
     SharedMem->TargetPid = Utils::GetPidByName("notepad.exe");
     SetEvent(UmEvent);
     WaitForSingleObject(KmEvent, INFINITE);
-    printf("Shared PID 0x%x\n", SharedMem->TargetPid);
+    printf("Shared PID 0x%x with kernel\n", SharedMem->TargetPid);
 
     LARGE_INTEGER freq, start, end;
     double elapsed;
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&start);
 
-    for (int i = 0; i < 150000; i++)
+    void* ReadBuffer = malloc(4096);
+    RtlZeroMemory(ReadBuffer, 4096);
+    SharedMem->WriteSrcAddress = Utils::GetModuleBaseAddress(SharedMem->TargetPid, "notepad.exe");
+    SharedMem->WriteDstAddress = (std::uint64_t)ReadBuffer;
+
+    for (int i = 0; i < 1000000; i++)
     {
         SetEvent(UmEvent);
         WaitForSingleObject(KmEvent, INFINITE);
@@ -260,8 +260,10 @@ int main()
     QueryPerformanceCounter(&end);
     elapsed = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart;
 
-    printf("150000 iterations took: %.6f seconds\n", elapsed);
-    printf("Average per round-trip: %.2f us\n", (elapsed * 1e6) / 150000);
+    printf("1000000 iterations took: %.6f seconds\n", elapsed);
+    printf("Average per round-trip: %.2f us\n", (elapsed * 1e6) / 1000000);
+
+    printf("read 8 bytes: 0x%p\n", *(void**)ReadBuffer);
 
     printf("Done\n");
 

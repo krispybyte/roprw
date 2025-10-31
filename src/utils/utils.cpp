@@ -183,3 +183,37 @@ DWORD Utils::GetPidByName(const std::string& ProcessName)
     CloseHandle(Snapshot);
     return 0; // Not found
 }
+
+uintptr_t Utils::GetModuleBaseAddress(DWORD Pid, const std::string& ModuleName)
+{
+    if (Pid == 0 || ModuleName.empty())
+        return 0;
+
+    HANDLE Snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, Pid);
+    if (Snapshot == INVALID_HANDLE_VALUE)
+        return 0;
+
+    MODULEENTRY32 ModuleEntry;
+    ModuleEntry.dwSize = sizeof(MODULEENTRY32);
+
+    std::string Target = ModuleName;
+    std::transform(Target.begin(), Target.end(), Target.begin(), ::tolower);
+
+    if (Module32First(Snapshot, &ModuleEntry))
+    {
+        do
+        {
+            std::string Current = ModuleEntry.szModule;
+            std::transform(Current.begin(), Current.end(), Current.begin(), ::tolower);
+
+            if (Current == Target)
+            {
+                CloseHandle(Snapshot);
+                return reinterpret_cast<uintptr_t>(ModuleEntry.modBaseAddr);
+            }
+        } while (Module32Next(Snapshot, &ModuleEntry));
+    }
+
+    CloseHandle(Snapshot);
+    return 0;
+}
