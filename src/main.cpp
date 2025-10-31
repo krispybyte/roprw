@@ -119,28 +119,6 @@ int main()
 
     void* UmBufferTest = malloc(4096);
 
-    // first arg
-    InitStackManager.ReadIntoRcx((std::uint64_t)SystemEProcessOutputArg);
-    // fourth arg
-    InitStackManager.SetRdx((std::uint64_t)UmBufferTest);
-    InitStackManager.AddGadget(0x21307f, "mov rax, rdx; ret;");
-    InitStackManager.MovRaxIntoR9();
-    // third arg
-    InitStackManager.SetRdx((std::uint64_t)EProcessOutputArg);
-    InitStackManager.AddGadget(0x21307f, "mov rax, rdx; ret;");
-    InitStackManager.ReadRaxIntoRax();
-    InitStackManager.MovRaxIntoR8();
-    // second arg
-    InitStackManager.SetRdx(Globals::KernelBase);
-
-    InitStackManager.AlignStack();
-    InitStackManager.AddGadget(Driver::GetKernelFunctionOffset("MmCopyVirtualMemory"), "Function to call address");
-    InitStackManager.AddGadget(0x20268c, "add rsp, 0x38; ret;");
-    InitStackManager.AddPadding(0x20);
-    InitStackManager.AddValue(0x8, "size");
-    InitStackManager.AddValue(0, "mode");
-    InitStackManager.AddValue((std::uint64_t)Globals::DummyMemoryAllocation, "bytes addr");
-
     InitStackManager.PivotToNewStack(MainStackManager);
 
     // set first arg
@@ -151,6 +129,16 @@ int main()
     MainStackManager.SetR8(NULL);
 
     MainStackManager.AddFunctionCall("ZwWaitForSingleObject");
+
+    MainStackManager.CallMmCopyVirtualMemory(
+        SystemEProcessOutputArg,
+        (void*)Globals::KernelBase,
+        EProcessOutputArg,
+        UmBufferTest,
+        0,
+        sizeof(void*),
+        Globals::DummyMemoryAllocation
+    );
 
     MainStackManager.ReadIntoRcx((std::uint64_t)KmOutputHandleArg);
     MainStackManager.SetRdx(NULL);
@@ -215,11 +203,22 @@ int main()
 
     printf("Starting\n");
 
-    for (int i = 0; i < 100; i++)
+    LARGE_INTEGER freq, start, end;
+    double elapsed;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&start);
+
+    for (int i = 0; i < 150000; i++)
     {
         SetEvent(UmEvent);
         WaitForSingleObject(KmEvent, INFINITE);
     }
+
+    QueryPerformanceCounter(&end);
+    elapsed = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart;
+
+    printf("150,000 iterations took: %.6f seconds\n", elapsed);
+    printf("Average per round-trip: %.2f µs\n", (elapsed * 1e6) / 150000);
 
     printf("Done\n");
 

