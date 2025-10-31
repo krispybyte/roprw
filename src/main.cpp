@@ -138,7 +138,47 @@ int main()
 
     InitStackManager.PivotToNewStack(MainStackManager);
 
+    void* ReadBuffer = malloc(4096);
+
+    SharedMem->WriteSrcAddress = 0x7ff7455f0000;
+    SharedMem->WriteDstAddress = (std::uint64_t)ReadBuffer;
+
     MainStackManager.AwaitUsermode(UmOutputHandleArg);
+    // Copy user shared memory into our buffer
+    MainStackManager.CallMmCopyVirtualMemory(CheatEProcessOutputArg, SharedMem, SystemEProcessOutputArg, KernelSharedMemoryAllocation, 0, sizeof(SharedMemory), Globals::DummyMemoryAllocation);
+
+    // Read from game process to cheat process
+    // first arg
+    MainStackManager.ReadIntoRcx(reinterpret_cast<std::uint64_t>(GameEProcessOutputArg));
+    // fourth arg (shared memory + offsetof(dest addr))
+    MainStackManager.SetRdx(reinterpret_cast<std::uint64_t>(KernelSharedMemoryAllocation) + offsetof(SharedMemory, WriteDstAddress));
+    MainStackManager.AddGadget(0x21307f, "mov rax, rdx; ret;");
+    MainStackManager.ReadRaxIntoRax();
+    MainStackManager.MovRaxIntoR9();
+    // third arg
+    MainStackManager.SetRdx(reinterpret_cast<std::uint64_t>(CheatEProcessOutputArg));
+    MainStackManager.AddGadget(0x21307f, "mov rax, rdx; ret;");
+    MainStackManager.ReadRaxIntoRax();
+    MainStackManager.MovRaxIntoR8();
+    // second arg
+    MainStackManager.SetRdx(reinterpret_cast<std::uint64_t>(KernelSharedMemoryAllocation) + offsetof(SharedMemory, WriteSrcAddress));
+    MainStackManager.AddGadget(0x21307f, "mov rax, rdx; ret;");
+    MainStackManager.ReadRaxIntoRax();
+    MainStackManager.AddGadget(0x3e8aef, "cmp esi, esi; ret;");
+    MainStackManager.AddGadget(0x2cba13, "mov rdx, rax; jne 0x......; add rsp, 0x28; ret;");
+    MainStackManager.AddPadding(0x28);
+    // perform call
+    MainStackManager.AlignStack();
+    MainStackManager.AddGadget(Driver::GetKernelFunctionOffset("MmCopyVirtualMemory"), "MmCopyVirtualMemory address");
+    // clean up shadow space + args after call
+    MainStackManager.AddGadget(0x20268c, "add rsp, 0x38; ret;");
+    // shadow space
+    MainStackManager.AddPadding(0x20);
+    // stack args
+    MainStackManager.AddValue(sizeof(void*), "size");
+    MainStackManager.AddValue(0, "previous mode");
+    MainStackManager.AddValue(reinterpret_cast<std::uint64_t>(Globals::DummyMemoryAllocation), "bytes addr");
+
     MainStackManager.SignalUsermode(KmOutputHandleArg);
     MainStackManager.LoopBack();
 
@@ -226,6 +266,7 @@ int main()
     printf("Done\n");
 
     printf("writing to %p\n", KernelSharedMemoryAllocation);
+    printf("data buffer at %p\n", ReadBuffer);
 
     std::cin.get();
 
