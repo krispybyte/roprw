@@ -40,6 +40,8 @@ public:
     void ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBase, const std::uint64_t NewStackLimit);
     void CallMmCopyVirtualMemory(void* SourceProcess, void* SourceAddress, void* TargetProcess, void* TargetAddress, int PreviousMode, const std::size_t BufferSize, void* ReturnSize);
     void PivotToNewStack(StackManager& StackToPivot);
+    void AwaitUsermode(const void* UmEventHandleAddress);
+    void SignalUsermode(const void* KmEventHandleAddress);
     void LoopBack();
     void AlignStack();
 

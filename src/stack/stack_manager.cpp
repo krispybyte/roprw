@@ -253,6 +253,21 @@ void StackManager::PivotToNewStack(StackManager& NewStack)
     this->PivotToR11();
 }
 
+void StackManager::AwaitUsermode(const void* UmEventHandleAddress)
+{
+    this->ReadIntoRcx(reinterpret_cast<std::uint64_t>(UmEventHandleAddress));
+    this->SetRdx(TRUE);
+    this->SetR8(NULL);
+    this->AddFunctionCall("ZwWaitForSingleObject");
+}
+
+void StackManager::SignalUsermode(const void* KmEventHandleAddress)
+{
+    this->ReadIntoRcx(reinterpret_cast<std::uint64_t>(KmEventHandleAddress));
+    this->SetRdx(NULL);
+    this->AddFunctionCall("ZwSetEvent");
+}
+
 void StackManager::LoopBack()
 {
     this->PivotToNewStack(*this);

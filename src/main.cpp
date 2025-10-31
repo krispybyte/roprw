@@ -29,6 +29,14 @@ static_assert(offsetof(PivotData, NewRbp) == 0x18, "NewRbp offset must be 0x18")
 static_assert(offsetof(PivotData, JumpAddress) == 0x50, "JumpAddress offset must be 0x50");
 static_assert(sizeof(PivotData) == 0x58, "PivotData size must be 0x58");
 
+struct SharedMemory
+{
+    std::uint64_t WriteSrcAddress;
+    std::uint64_t WriteDstAddress;
+    std::size_t WriteSize;
+    std::uint64_t TargetPid;
+};
+
 int main()
 {
     if (!Utils::EnableDebugPrivilege())
@@ -64,6 +72,7 @@ int main()
 
     Driver::ArbitraryCaller KernelCaller = Driver::ArbitraryCaller("NtReadFileScatter");
 
+    void* KernelSharedMemoryAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(SharedMemory), reinterpret_cast<void*>(MAXULONG64));
     void* PivotDataAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(PivotData), reinterpret_cast<void*>(MAXULONG64));
     void* UmDestinationStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x20, reinterpret_cast<void*>(MAXULONG64));
     void* UmSourceStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x20, reinterpret_cast<void*>(MAXULONG64));
@@ -73,7 +82,8 @@ int main()
     void* KmSourceStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x20, reinterpret_cast<void*>(MAXULONG64));
     void* KmObjectAttributeArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(OBJECT_ATTRIBUTES), reinterpret_cast<void*>(MAXULONG64));
     void* KmOutputHandleArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
-    void* EProcessOutputArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
+    void* GameEProcessOutputArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
+    void* CheatEProcessOutputArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
     void* SystemEProcessOutputArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
     void* MainStackAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x6000, reinterpret_cast<void*>(MAXULONG64));
     void* InitStackAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x6000, reinterpret_cast<void*>(MAXULONG64));
@@ -106,6 +116,8 @@ int main()
     StackManager MainStackManager(Globals::KernelBase, (std::uintptr_t)MainStackAllocation + 0x2000, 0x2000);
     StackManager InitStackManager(Globals::KernelBase, (std::uintptr_t)InitStackAllocation + 0x2000, 0x2000);
 
+    SharedMemory* SharedMem = new SharedMemory();
+
     // Open handle to usermode event in the kernel
     InitStackManager.AddFunctionCall("RtlInitUnicodeString", (std::uint64_t)UmDestinationStringArg, (std::uint64_t)UmSourceStringArg);
     InitStackManager.AddFunctionCall("ZwOpenEvent", (std::uint64_t)UmOutputHandleArg, EVENT_MODIFY_STATE | SYNCHRONIZE, (std::uint64_t)UmObjectAttributeArg);
@@ -114,36 +126,20 @@ int main()
     InitStackManager.AddFunctionCall("ZwOpenEvent", (std::uint64_t)KmOutputHandleArg, EVENT_MODIFY_STATE | SYNCHRONIZE, (std::uint64_t)KmObjectAttributeArg);
 
     // Get usermode process
-    InitStackManager.AddFunctionCall("PsLookupProcessByProcessId", GetCurrentProcessId(), (std::uint64_t)EProcessOutputArg);
+    InitStackManager.AddFunctionCall("PsLookupProcessByProcessId", GetCurrentProcessId(), (std::uint64_t)CheatEProcessOutputArg);
     InitStackManager.AddFunctionCall("PsLookupProcessByProcessId", 4, (std::uint64_t)SystemEProcessOutputArg);
 
-    void* UmBufferTest = malloc(4096);
+    InitStackManager.AwaitUsermode(UmOutputHandleArg);
+    InitStackManager.CallMmCopyVirtualMemory(CheatEProcessOutputArg, SharedMem, SystemEProcessOutputArg, KernelSharedMemoryAllocation, 0, sizeof(SharedMemory), Globals::DummyMemoryAllocation);
+    InitStackManager.ReadIntoRcx(reinterpret_cast<std::uint64_t>(KernelSharedMemoryAllocation) + offsetof(SharedMemory, TargetPid));
+    InitStackManager.SetRdx((std::uint64_t)GameEProcessOutputArg);
+    InitStackManager.AddFunctionCall("PsLookupProcessByProcessId");
+    MainStackManager.SignalUsermode(KmOutputHandleArg);
 
     InitStackManager.PivotToNewStack(MainStackManager);
 
-    // set first arg
-    MainStackManager.ReadIntoRcx((std::uint64_t)UmOutputHandleArg);
-    // set second arg
-    MainStackManager.SetRdx(TRUE);
-    // set third arg
-    MainStackManager.SetR8(NULL);
-
-    MainStackManager.AddFunctionCall("ZwWaitForSingleObject");
-
-    MainStackManager.CallMmCopyVirtualMemory(
-        SystemEProcessOutputArg,
-        (void*)Globals::KernelBase,
-        EProcessOutputArg,
-        UmBufferTest,
-        0,
-        sizeof(void*),
-        Globals::DummyMemoryAllocation
-    );
-
-    MainStackManager.ReadIntoRcx((std::uint64_t)KmOutputHandleArg);
-    MainStackManager.SetRdx(NULL);
-    MainStackManager.AddFunctionCall("ZwSetEvent");
-
+    MainStackManager.AwaitUsermode(UmOutputHandleArg);
+    MainStackManager.SignalUsermode(KmOutputHandleArg);
     MainStackManager.LoopBack();
 
     OBJECT_ATTRIBUTES UmObjectAttributesData;
@@ -202,6 +198,13 @@ int main()
     KernelCaller.Call<void*, HANDLE>("ZwClose", KernelThreadHandle);
 
     printf("Starting\n");
+    printf("Shmem at %p\n", SharedMem);
+
+    // Share target pid with kernel thread
+    SharedMem->TargetPid = Utils::GetPidByName("notepad.exe");
+    SetEvent(UmEvent);
+    WaitForSingleObject(KmEvent, INFINITE);
+    printf("Shared PID 0x%x\n", SharedMem->TargetPid);
 
     LARGE_INTEGER freq, start, end;
     double elapsed;
@@ -217,15 +220,12 @@ int main()
     QueryPerformanceCounter(&end);
     elapsed = (double)(end.QuadPart - start.QuadPart) / freq.QuadPart;
 
-    printf("150,000 iterations took: %.6f seconds\n", elapsed);
-    printf("Average per round-trip: %.2f µs\n", (elapsed * 1e6) / 150000);
+    printf("150000 iterations took: %.6f seconds\n", elapsed);
+    printf("Average per round-trip: %.2f us\n", (elapsed * 1e6) / 150000);
 
     printf("Done\n");
 
-    printf("Waiting for input to print value\n");
-    printf("writing to %p\n", UmBufferTest);
-    std::cin.get();
-    printf("value: %p\n", *(void**)UmBufferTest);
+    printf("writing to %p\n", KernelSharedMemoryAllocation);
 
     std::cin.get();
 

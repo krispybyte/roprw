@@ -3,6 +3,7 @@
 #include <winternl.h>
 #include <map>
 #include <random>
+#include <tlhelp32.h>
 
 // Required in an administrator ran process (in win build 24h2+) in order to find ntoskrnl.exe base address
 bool Utils::EnableDebugPrivilege()
@@ -149,4 +150,36 @@ std::string Utils::GetWindowsDisplayVersion()
         return {};
 
     return DisplayVersion;
+}
+
+DWORD Utils::GetPidByName(const std::string& ProcessName)
+{
+    HANDLE Snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (Snapshot == INVALID_HANDLE_VALUE)
+        return 0;
+
+    PROCESSENTRY32 ProcessEntry;
+    ProcessEntry.dwSize = sizeof(PROCESSENTRY32);
+
+    // Normalize input name to lowercase for case-insensitive comparison
+    std::string TargetName = ProcessName;
+    std::transform(TargetName.begin(), TargetName.end(), TargetName.begin(), ::tolower);
+
+    if (Process32First(Snapshot, &ProcessEntry))
+    {
+        do
+        {
+            std::string Current = ProcessEntry.szExeFile;
+            std::transform(Current.begin(), Current.end(), Current.begin(), ::tolower);
+
+            if (Current == TargetName)
+            {
+                CloseHandle(Snapshot);
+                return ProcessEntry.th32ProcessID;
+            }
+        } while (Process32Next(Snapshot, &ProcessEntry));
+    }
+
+    CloseHandle(Snapshot);
+    return 0; // Not found
 }

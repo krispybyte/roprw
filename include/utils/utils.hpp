@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <Windows.h>
 
 namespace Utils
 {
@@ -8,4 +9,5 @@ namespace Utils
 	std::vector<std::uintptr_t> FindLegitimateKernelThreadStartAddresses();
 	std::uintptr_t FindRandomValidThreadAddress(const int MinimumDuplicates = 2);
 	std::string GetWindowsDisplayVersion();
+	DWORD GetPidByName(const std::string& ProcessName);
 }
