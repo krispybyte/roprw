@@ -47,4 +47,5 @@ public:
 	void SpawnThread();
 	void SendTargetProcessPid(const int TargetPid);
 	void SendReadRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size);
+	void SendWriteRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size);
 };

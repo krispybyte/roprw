@@ -141,3 +141,13 @@ void RopThreadManager::SendReadRequest(const std::uint64_t SourceAddress, const 
     SharedMemory->WriteSize = Size;
     SendPacket();
 }
+
+void RopThreadManager::SendWriteRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size)
+{
+    SharedMemory->WriteSrcEProcess = SharedMemory->CheatEProcess;
+    SharedMemory->WriteDstEProcess = SharedMemory->GameEProcess;
+    SharedMemory->WriteSrcAddress = SourceAddress;
+    SharedMemory->WriteDstAddress = DestAddress;
+    SharedMemory->WriteSize = Size;
+    SendPacket();
+}
