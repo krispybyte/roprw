@@ -3,5 +3,5 @@
 namespace Globals
 {
 	std::uintptr_t KernelBase = NULL;
-	std::string WindowsBuild = "";
+	DWORD WindowsBuild = NULL;
 }

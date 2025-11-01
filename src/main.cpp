@@ -33,14 +33,15 @@ int main()
     // look suspicious if we have it so let's just disable it.
     Utils::DisableDebugPrivilege();
 
-    Globals::WindowsBuild = Utils::GetWindowsDisplayVersion();
-    if (Globals::WindowsBuild.empty())
+    Globals::WindowsBuild = Utils::GetWindowsBuildNumber();
+    if (Globals::WindowsBuild == 0)
     {
         std::exception("Failed to find the windows build being used");
         return EXIT_FAILURE;
     }
 
-    std::printf("[+] Windows build: %s\n", Globals::WindowsBuild.c_str());
+    std::printf("[+] Windows build: %d\n", Globals::WindowsBuild);
+    std::printf("[+] Windows display version: %s\n", Utils::GetWindowsDisplayVersion().c_str());
     std::printf("[+] New thread address to be used @ 0x%p\n", RandomValidThreadAddress);
     std::printf("[+] ntoskrnl.exe @ 0x%p\n", Globals::KernelBase);
 

@@ -1,8 +1,9 @@
 #pragma once
-#include <string>
+#include <cstdint>
+#include <wtypes.h>
 
 namespace Globals
 {
 	extern std::uintptr_t KernelBase;
-	extern std::string WindowsBuild;
+	extern DWORD WindowsBuild;
 }

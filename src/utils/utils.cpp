@@ -157,6 +157,25 @@ std::uintptr_t Utils::FindRandomValidThreadAddress(const int MinimumDuplicates)
     return ValidFrequentAddresses[RandomIndex];
 }
 
+DWORD Utils::GetWindowsBuildNumber()
+{
+    using RtlGetVersionType = NTSTATUS(WINAPI*)(RTL_OSVERSIONINFOEXW*);
+
+    const HMODULE NtDllHandle = GetModuleHandleW(L"ntdll.dll");
+    if (!NtDllHandle)
+        return 0;
+
+    const RtlGetVersionType RtlGetVersion = reinterpret_cast<RtlGetVersionType>(GetProcAddress(NtDllHandle, "RtlGetVersion"));
+    if (!RtlGetVersion)
+        return 0;
+
+    RTL_OSVERSIONINFOEXW OsVersionInfo = { sizeof(OsVersionInfo) };
+    if (RtlGetVersion(&OsVersionInfo) != 0)
+        return 0;
+
+    return OsVersionInfo.dwBuildNumber;
+}
+
 std::string Utils::GetWindowsDisplayVersion()
 {
     HKEY KeyHandle;
