@@ -5,7 +5,6 @@
 #include <random>
 #include <tlhelp32.h>
 
-// Required in an administrator ran process (in win build 24h2+) in order to find ntoskrnl.exe base address
 bool Utils::EnableDebugPrivilege()
 {
 	HANDLE Token;
@@ -39,6 +38,29 @@ bool Utils::EnableDebugPrivilege()
 
 	CloseHandle(Token);
 	return true;
+}
+
+bool Utils::DisableDebugPrivilege()
+{
+    HANDLE Token;
+    TOKEN_PRIVILEGES TokenPrivileges;
+    LUID UID;
+
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &Token))
+        return false;
+
+    TokenPrivileges.PrivilegeCount = 1;
+    TokenPrivileges.Privileges[0].Luid = UID;
+    TokenPrivileges.Privileges[0].Attributes = 0;
+
+    if (!AdjustTokenPrivileges(Token, FALSE, &TokenPrivileges, sizeof(TOKEN_PRIVILEGES), NULL, NULL))
+    {
+        CloseHandle(Token);
+        return false;
+    }
+
+    CloseHandle(Token);
+    return true;
 }
 
 #define SystemProcessInformation 5

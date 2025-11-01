@@ -7,9 +7,18 @@
 
 int main()
 {
+    // Required in our process starting from winver 24h2 to get
+    // the kernel's module base, and system thread start addresses.
     if (!Utils::EnableDebugPrivilege())
     {
         std::exception("Failed to enable debug privileges");
+        return EXIT_FAILURE;
+    }
+
+    Globals::KernelBase = Driver::GetKernelModuleBase();
+    if (!Globals::KernelBase)
+    {
+        std::exception("Failed to find ntoskrnl.exe base");
         return EXIT_FAILURE;
     }
 
@@ -20,17 +29,14 @@ int main()
         return EXIT_FAILURE;
     }
 
+    // We no longer need this debug privilege, and it might
+    // look suspicious if we have it so let's just disable it.
+    Utils::DisableDebugPrivilege();
+
     Globals::WindowsBuild = Utils::GetWindowsDisplayVersion();
     if (Globals::WindowsBuild.empty())
     {
         std::exception("Failed to find the windows build being used");
-        return EXIT_FAILURE;
-    }
-
-    Globals::KernelBase = Driver::GetKernelModuleBase();
-    if (!Globals::KernelBase)
-    {
-        std::exception("Failed to find ntoskrnl.exe base");
         return EXIT_FAILURE;
     }
 
