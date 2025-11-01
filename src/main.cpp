@@ -31,6 +31,8 @@ static_assert(sizeof(PivotData) == 0x58, "PivotData size must be 0x58");
 
 struct SharedMemory
 {
+    std::uint64_t WriteSrcEProcess;
+    std::uint64_t WriteDstEProcess;
     std::uint64_t WriteSrcAddress;
     std::uint64_t WriteDstAddress;
     std::size_t WriteSize;
@@ -107,13 +109,13 @@ int main()
     KernelCaller.Call<void*, void*, std::size_t>("RtlZeroMemory", Globals::CurrentStackOffsetAddress, 0x8);
 
     // Create kernelmode event
-    const wchar_t* KmEventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT_KM11";
-    HANDLE KmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT_KM11");
+    const wchar_t* KmEventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT_KM";
+    HANDLE KmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT_KM");
     std::printf("[+] Kernelmode event handle: %x\n", KmEvent);
 
     // Create usermode event
-    const wchar_t* UmEventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT_UM11";
-    HANDLE UmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT_UM11");
+    const wchar_t* UmEventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT_UM";
+    HANDLE UmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT_UM");
     std::printf("[+] Usermode event handle: %x\n", UmEvent);
 
     StackManager MainStackManager(Globals::KernelBase, (std::uintptr_t)MainStackAllocation + 0x2000, 0x2000);
@@ -151,14 +153,14 @@ int main()
 
     // Read from game process to cheat process
     // first arg
-    MainStackManager.ReadIntoRcx(reinterpret_cast<std::uint64_t>(GameEProcessOutputArg));
+    MainStackManager.ReadIntoRcx(reinterpret_cast<std::uint64_t>(KernelSharedMemoryAllocation) + offsetof(SharedMemory, WriteSrcEProcess));
     // fourth arg (shared memory + offsetof(dest addr))
     MainStackManager.SetRdx(reinterpret_cast<std::uint64_t>(KernelSharedMemoryAllocation) + offsetof(SharedMemory, WriteDstAddress));
     MainStackManager.AddGadget(0x21307f, "mov rax, rdx; ret;");
     MainStackManager.ReadRaxIntoRax();
     MainStackManager.MovRaxIntoR9();
     // third arg
-    MainStackManager.SetRdx(reinterpret_cast<std::uint64_t>(CheatEProcessOutputArg));
+    MainStackManager.SetRdx(reinterpret_cast<std::uint64_t>(KernelSharedMemoryAllocation) + offsetof(SharedMemory, WriteDstEProcess));
     MainStackManager.AddGadget(0x21307f, "mov rax, rdx; ret;");
     MainStackManager.ReadRaxIntoRax();
     MainStackManager.MovRaxIntoR8();
@@ -258,6 +260,8 @@ int main()
 
     void* ReadBuffer = malloc(4096);
     RtlZeroMemory(ReadBuffer, 4096);
+    SharedMem->WriteSrcEProcess = SharedMem->GameEProcess;
+    SharedMem->WriteDstEProcess = SharedMem->CheatEProcess;
     SharedMem->WriteSrcAddress = Utils::GetModuleBaseAddress(SharedMem->TargetPid, "notepad.exe");
     SharedMem->WriteDstAddress = (std::uint64_t)ReadBuffer;
 
