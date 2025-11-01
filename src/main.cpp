@@ -35,6 +35,9 @@ struct SharedMemory
     std::uint64_t WriteDstAddress;
     std::size_t WriteSize;
     std::uint64_t TargetPid;
+    std::uint64_t CheatEProcess;
+    std::uint64_t GameEProcess;
+    std::uint64_t SystemEProcess;
 };
 
 int main()
@@ -104,13 +107,13 @@ int main()
     KernelCaller.Call<void*, void*, std::size_t>("RtlZeroMemory", Globals::CurrentStackOffsetAddress, 0x8);
 
     // Create kernelmode event
-    const wchar_t* KmEventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT_KM";
-    HANDLE KmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT_KM");
+    const wchar_t* KmEventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT_KM11";
+    HANDLE KmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT_KM11");
     std::printf("[+] Kernelmode event handle: %x\n", KmEvent);
 
     // Create usermode event
-    const wchar_t* UmEventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT_UM";
-    HANDLE UmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT_UM");
+    const wchar_t* UmEventNameString = L"\\BaseNamedObjects\\Global\\MYSIGNALEVENT_UM11";
+    HANDLE UmEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\MYSIGNALEVENT_UM11");
     std::printf("[+] Usermode event handle: %x\n", UmEvent);
 
     StackManager MainStackManager(Globals::KernelBase, (std::uintptr_t)MainStackAllocation + 0x2000, 0x2000);
@@ -134,7 +137,11 @@ int main()
     InitStackManager.ReadIntoRcx(reinterpret_cast<std::uint64_t>(KernelSharedMemoryAllocation) + offsetof(SharedMemory, TargetPid));
     InitStackManager.SetRdx((std::uint64_t)GameEProcessOutputArg);
     InitStackManager.AddFunctionCall("PsLookupProcessByProcessId");
-    InitStackManager.SignalUsermode(KmOutputHandleArg);
+    // Copy EProcess structures to usermode
+    InitStackManager.CallMmCopyVirtualMemory(SystemEProcessOutputArg, CheatEProcessOutputArg, CheatEProcessOutputArg, (void*)((uint64_t)SharedMem + offsetof(SharedMemory, CheatEProcess)), 0, sizeof(std::uint64_t), Globals::DummyMemoryAllocation);
+    InitStackManager.CallMmCopyVirtualMemory(SystemEProcessOutputArg, GameEProcessOutputArg, CheatEProcessOutputArg, (void*)((uint64_t)SharedMem + offsetof(SharedMemory, GameEProcess)), 0, sizeof(std::uint64_t), Globals::DummyMemoryAllocation);
+    InitStackManager.CallMmCopyVirtualMemory(SystemEProcessOutputArg, SystemEProcessOutputArg, CheatEProcessOutputArg, (void*)((uint64_t)SharedMem + offsetof(SharedMemory, SystemEProcess)), 0, sizeof(std::uint64_t), Globals::DummyMemoryAllocation);
+    MainStackManager.SignalUsermode(KmOutputHandleArg);
 
     InitStackManager.PivotToNewStack(MainStackManager);
 
@@ -240,6 +247,9 @@ int main()
     SetEvent(UmEvent);
     WaitForSingleObject(KmEvent, INFINITE);
     printf("Shared PID 0x%x with kernel\n", SharedMem->TargetPid);
+    printf("Retrieved cheat eproc: 0x%p\n", SharedMem->CheatEProcess);
+    printf("Retrieved game eproc: 0x%p\n", SharedMem->GameEProcess);
+    printf("Retrieved system eproc: 0x%p\n", SharedMem->SystemEProcess);
 
     LARGE_INTEGER freq, start, end;
     double elapsed;
@@ -268,7 +278,7 @@ int main()
     printf("Done\n");
 
     printf("writing to %p\n", KernelSharedMemoryAllocation);
-    printf("data buffer at %p\n", ReadBuffer);
+    //printf("data buffer at %p\n", ReadBuffer);
 
     std::cin.get();
 
