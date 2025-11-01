@@ -124,12 +124,6 @@ void RopThreadManager::SendTargetProcessPid(const int TargetPid)
 {
     SharedMemory->TargetPid = TargetPid;
     SendPacket();
-    printf("Shared PID 0x%x with kernel\n", SharedMemory->TargetPid);
-
-    // Now we should retrieve some information in the buffer from the kernel
-    printf("Retrieved cheat EProcess: 0x%p\n", SharedMemory->CheatEProcess);
-    printf("Retrieved game EProcess: 0x%p\n", SharedMemory->GameEProcess);
-    printf("Retrieved system EProcess: 0x%p\n", SharedMemory->SystemEProcess);
 }
 
 void RopThreadManager::SendReadRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size)
