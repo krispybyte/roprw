@@ -3,6 +3,7 @@
 #include <winternl.h>
 #include <map>
 #include <random>
+#include <tlhelp32.h>
 
 // Required in an administrator ran process (in win build 24h2+) in order to find ntoskrnl.exe base address
 bool Utils::EnableDebugPrivilege()
@@ -79,7 +80,7 @@ std::vector<std::uintptr_t> Utils::FindLegitimateKernelThreadStartAddresses()
             for (ULONG i = 0; i < SystemProcessInfo->NumberOfThreads; ++i)
             {
                 // Thread addresses in the kernel address space are high. A simple check can filter out invalid entries.
-                if ((uintptr_t)SystemThreadInformation[i].StartAddress > 0x7FFFFFFFFFFF)
+                if ((std::uintptr_t)SystemThreadInformation[i].StartAddress > 0x7FFFFFFFFFFF)
                     LegitimateStartAddresses.push_back(reinterpret_cast<std::uintptr_t>(SystemThreadInformation[i].StartAddress));
             }
             // Found the system process, no need to continue
@@ -149,4 +150,70 @@ std::string Utils::GetWindowsDisplayVersion()
         return {};
 
     return DisplayVersion;
+}
+
+DWORD Utils::GetPidByName(const std::string& ProcessName)
+{
+    HANDLE Snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (Snapshot == INVALID_HANDLE_VALUE)
+        return 0;
+
+    PROCESSENTRY32 ProcessEntry;
+    ProcessEntry.dwSize = sizeof(PROCESSENTRY32);
+
+    // Normalize input name to lowercase for case-insensitive comparison
+    std::string TargetName = ProcessName;
+    std::transform(TargetName.begin(), TargetName.end(), TargetName.begin(), ::tolower);
+
+    if (Process32First(Snapshot, &ProcessEntry))
+    {
+        do
+        {
+            std::string Current = ProcessEntry.szExeFile;
+            std::transform(Current.begin(), Current.end(), Current.begin(), ::tolower);
+
+            if (Current == TargetName)
+            {
+                CloseHandle(Snapshot);
+                return ProcessEntry.th32ProcessID;
+            }
+        } while (Process32Next(Snapshot, &ProcessEntry));
+    }
+
+    CloseHandle(Snapshot);
+    return 0; // Not found
+}
+
+uintptr_t Utils::GetModuleBaseAddress(DWORD Pid, const std::string& ModuleName)
+{
+    if (Pid == 0 || ModuleName.empty())
+        return 0;
+
+    HANDLE Snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, Pid);
+    if (Snapshot == INVALID_HANDLE_VALUE)
+        return 0;
+
+    MODULEENTRY32 ModuleEntry;
+    ModuleEntry.dwSize = sizeof(MODULEENTRY32);
+
+    std::string Target = ModuleName;
+    std::transform(Target.begin(), Target.end(), Target.begin(), ::tolower);
+
+    if (Module32First(Snapshot, &ModuleEntry))
+    {
+        do
+        {
+            std::string Current = ModuleEntry.szModule;
+            std::transform(Current.begin(), Current.end(), Current.begin(), ::tolower);
+
+            if (Current == Target)
+            {
+                CloseHandle(Snapshot);
+                return reinterpret_cast<uintptr_t>(ModuleEntry.modBaseAddr);
+            }
+        } while (Module32Next(Snapshot, &ModuleEntry));
+    }
+
+    CloseHandle(Snapshot);
+    return 0;
 }
