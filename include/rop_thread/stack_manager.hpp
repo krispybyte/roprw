@@ -3,20 +3,21 @@
 #include <vector>
 #include <string_view>
 #include <include/driver/kernel_addresses.hpp>
+#include <include/rop_thread/memory_manager.hpp>
+#include <include/rop_thread/definitions.hpp>
 
 class StackManager
 {
 protected:
     std::unique_ptr<std::vector<std::uint64_t>> Stack;
 private:
-	std::uintptr_t KernelModuleBase = NULL;
-	std::uintptr_t StackAllocAddress = NULL;
+    MemoryManager* KernelMemory = nullptr;
+    std::uintptr_t StackAllocAddress = NULL;
 	std::size_t StackSizeLimit = NULL;
     void ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue);
-
 public:
-	StackManager(const std::uintptr_t _KernelModuleBase, const std::uintptr_t _StackAllocAddress, const size_t _StackSizeLimit = 0x2000)
-		: KernelModuleBase(_KernelModuleBase), StackAllocAddress(_StackAllocAddress), StackSizeLimit(_StackSizeLimit)
+	StackManager(MemoryManager* _KernelMemory, const std::uintptr_t _StackAllocAddress, const size_t _StackSizeLimit = MAXIMUM_STACK_SIZE)
+		: KernelMemory(_KernelMemory), StackAllocAddress(_StackAllocAddress), StackSizeLimit(_StackSizeLimit)
 	{
         Stack = std::make_unique<std::vector<std::uint64_t>>();
 	}

