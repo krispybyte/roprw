@@ -1,4 +1,5 @@
 #include <include/driver/kernel_addresses.hpp>
+#include <include/utils/utils.hpp>
 
 const std::uint32_t Driver::GetKernelFunctionOffset(const std::string_view& Name)
 {

