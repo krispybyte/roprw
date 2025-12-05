@@ -32,8 +32,10 @@ public:
     void PivotToR11();
     void MovRaxIntoR9();
     void MovRaxIntoR8();
+    void MovRaxIntoRdx();
     void SetR8(const std::uint64_t NewR8Value);
     void SetR9(const std::uint64_t NewR9Value);
+    void SetRax(const std::uint64_t NewRaxValue);
     void SetRdx(const std::uint64_t NewRdxValue);
     void SetRcxRdx(const std::uint64_t NewRcxValue, const std::uint64_t NewRdxValue);
     void SetRaxRcxRdx(const std::uint64_t NewRaxValue, const std::uint64_t NewRcxValue, const std::uint64_t NewRdxValue);
@@ -81,25 +83,25 @@ public:
         case 2:
         case 3:
         case 4:
-            this->AddGadget(0xbaf76a, "add rsp, 0x20; ret;");
+            this->AddGadget(0xbb476a, "add rsp, 0x20; ret;");
             break;
         case 5:
-            this->AddGadget(0x2005e3, "add rsp, 0x28; ret;");
+            this->AddGadget(0x2055f6, "add rsp, 0x28; ret;");
             break;
         case 6:
-            this->AddGadget(0x51ad84, "pop ...; pop ...; pop ...; pop ...; pop ...; pop ...; ret;");
+            this->AddGadget(0x51f844, "pop ...; pop ...; pop ...; pop ...; pop ...; pop ...; ret;");
             break;
         case 7:
-            this->AddGadget(0x20268c, "add rsp, 0x38; ret;");
+            this->AddGadget(0x20057e, "add rsp, 0x38; ret;");
             break;
         case 8:
-            this->AddGadget(0x3ded1c, "pop ...; add rsp, 0x20; pop ...; pop ...; pop ...; ret;");
+            this->AddGadget(0x3ebaec, "pop ...; add rsp, 0x20; pop ...; pop ...; pop ...; ret;");
             break;
         case 9:
-            this->AddGadget(0x216dce, "add rsp, 0x48; ret;");
+            this->AddGadget(0x202ed7, "add rsp, 0x48; ret;");
             break;
         case 10:
-            this->AddGadget(0x73027c, "pop ...; add rsp, 0x48; ret;");
+            this->AddGadget(0x73462c, "pop ...; add rsp, 0x48; ret;");
             break;
         }
 
