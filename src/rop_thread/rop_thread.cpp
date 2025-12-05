@@ -25,13 +25,13 @@ void RopThreadManager::BuildInitStack(StackManager* Stack, StackManager* PivotSt
     Stack->CallMmCopyVirtualMemory(KernelMemory->SystemEProcessOutputArg, KernelMemory->GameEProcessOutputArg, KernelMemory->CheatEProcessOutputArg, (void*)((uint64_t)SharedMem + offsetof(SharedMemoryData, GameEProcess)), 0, sizeof(std::uint64_t), KernelMemory->DummyMemoryAllocation);
     Stack->CallMmCopyVirtualMemory(KernelMemory->SystemEProcessOutputArg, KernelMemory->SystemEProcessOutputArg, KernelMemory->CheatEProcessOutputArg, (void*)((uint64_t)SharedMem + offsetof(SharedMemoryData, SystemEProcess)), 0, sizeof(std::uint64_t), KernelMemory->DummyMemoryAllocation);
 
+    Stack->SignalUsermode(KernelMemory->KmOutputHandleArg);
+
     Stack->PivotToNewStack(*PivotStack);
 }
 
 void RopThreadManager::BuildMainStack(StackManager* Stack, const SharedMemoryData* SharedMem)
 {
-    Stack->SignalUsermode(KernelMemory->KmOutputHandleArg);
-
     Stack->AwaitUsermode(KernelMemory->UmOutputHandleArg);
     // Copy user shared memory into our buffer
     Stack->CallMmCopyVirtualMemory(KernelMemory->CheatEProcessOutputArg, (void*)SharedMem, KernelMemory->SystemEProcessOutputArg, KernelMemory->KernelSharedMemoryAllocation, 0, sizeof(SharedMemoryData), KernelMemory->DummyMemoryAllocation);
