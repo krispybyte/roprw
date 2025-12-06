@@ -31,6 +31,19 @@
 #define UM_SHORT_EVENT_NAME L"Global\\MYSIGNALEVENT_UM"
 #define KM_SHORT_EVENT_NAME L"Global\\MYSIGNALEVENT_KM"
 
+/**
+    This is a legitimate tag often used by Windows. It is used for all memory allocations
+    created with ExAllocatePool2 in the project.
+*/
+#define ALLOC_TAG       'Thre'
+
+/**
+    Taken from MSDN
+    https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/pool_flags
+*/
+#define POOL_FLAG_NON_PAGED               0x0000000000000040UI64     // Non paged pool NX
+#define POOL_FLAG_NON_PAGED_EXECUTE       0x0000000000000080UI64     // Non paged pool executable
+
 #ifdef _MSC_VER
 #pragma pack(push, 1)
 #endif
