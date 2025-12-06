@@ -8,24 +8,24 @@ void MemoryManager::AllocateMemory()
     const int UmEventNameStringLength = (lstrlenW(UmEventNameString) + 1) * sizeof(WCHAR);
     const int KmEventNameStringLength = (lstrlenW(KmEventNameString) + 1) * sizeof(WCHAR);
 
-    KernelSharedMemoryAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, sizeof(SharedMemoryData), 'Thre');
-    PivotDataAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, sizeof(PivotData), 'Thre');
-    UmDestinationStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
-    UmSourceStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, UmEventNameStringLength, 'Thre');
-    UmObjectAttributeArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, sizeof(OBJECT_ATTRIBUTES), 'Thre');
-    UmOutputHandleArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
-    KmDestinationStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
-    KmSourceStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, KmEventNameStringLength, 'Thre');
-    KmObjectAttributeArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, sizeof(OBJECT_ATTRIBUTES), 'Thre');
-    KmOutputHandleArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
-    GameEProcessOutputArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
-    CheatEProcessOutputArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
-    SystemEProcessOutputArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
-    InitStackAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, STACK_ALLOC_SIZE, 'Thre');
-    MainStackAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, STACK_ALLOC_SIZE, 'Thre');
-    DummyMemoryAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
-    CurrentStackOffsetAddress = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
-    StackLimitStoreAddress = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
+    KernelSharedMemoryAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, sizeof(SharedMemoryData), ALLOC_TAG);
+    PivotDataAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, sizeof(PivotData), ALLOC_TAG);
+    UmDestinationStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, 0x8, ALLOC_TAG);
+    UmSourceStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, UmEventNameStringLength, ALLOC_TAG);
+    UmObjectAttributeArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, sizeof(OBJECT_ATTRIBUTES), ALLOC_TAG);
+    UmOutputHandleArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, 0x8, ALLOC_TAG);
+    KmDestinationStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, 0x8, ALLOC_TAG);
+    KmSourceStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, KmEventNameStringLength, ALLOC_TAG);
+    KmObjectAttributeArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, sizeof(OBJECT_ATTRIBUTES), ALLOC_TAG);
+    KmOutputHandleArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, 0x8, ALLOC_TAG);
+    GameEProcessOutputArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, 0x8, ALLOC_TAG);
+    CheatEProcessOutputArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, 0x8, ALLOC_TAG);
+    SystemEProcessOutputArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, 0x8, ALLOC_TAG);
+    InitStackAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, STACK_ALLOC_SIZE, ALLOC_TAG);
+    MainStackAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, STACK_ALLOC_SIZE, ALLOC_TAG);
+    DummyMemoryAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, 0x8, ALLOC_TAG);
+    CurrentStackOffsetAddress = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, 0x8, ALLOC_TAG);
+    StackLimitStoreAddress = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)POOL_FLAG_NON_PAGED, 0x8, ALLOC_TAG);
 }
 
 void MemoryManager::FreeMemory()
