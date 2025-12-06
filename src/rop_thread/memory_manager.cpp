@@ -8,24 +8,24 @@ void MemoryManager::AllocateMemory()
     const int UmEventNameStringLength = (lstrlenW(UmEventNameString) + 1) * sizeof(WCHAR);
     const int KmEventNameStringLength = (lstrlenW(KmEventNameString) + 1) * sizeof(WCHAR);
 
-    KernelSharedMemoryAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(SharedMemoryData), reinterpret_cast<void*>(MAXULONG64));
-    PivotDataAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(PivotData), reinterpret_cast<void*>(MAXULONG64));
-    UmDestinationStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
-    UmSourceStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", UmEventNameStringLength, reinterpret_cast<void*>(MAXULONG64));
-    UmObjectAttributeArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(OBJECT_ATTRIBUTES), reinterpret_cast<void*>(MAXULONG64));
-    UmOutputHandleArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
-    KmDestinationStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
-    KmSourceStringArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", KmEventNameStringLength, reinterpret_cast<void*>(MAXULONG64));
-    KmObjectAttributeArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", sizeof(OBJECT_ATTRIBUTES), reinterpret_cast<void*>(MAXULONG64));
-    KmOutputHandleArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
-    GameEProcessOutputArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
-    CheatEProcessOutputArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
-    SystemEProcessOutputArg = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
-    MainStackAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", STACK_ALLOC_SIZE, reinterpret_cast<void*>(MAXULONG64));
-    InitStackAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", STACK_ALLOC_SIZE, reinterpret_cast<void*>(MAXULONG64));
-    DummyMemoryAllocation = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
-    CurrentStackOffsetAddress = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
-    StackLimitStoreAddress = KernelCaller.Call<void*, std::size_t, void*>("MmAllocateContiguousMemory", 0x8, reinterpret_cast<void*>(MAXULONG64));
+    KernelSharedMemoryAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, sizeof(SharedMemoryData), 'Thre');
+    PivotDataAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, sizeof(PivotData), 'Thre');
+    UmDestinationStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
+    UmSourceStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, UmEventNameStringLength, 'Thre');
+    UmObjectAttributeArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, sizeof(OBJECT_ATTRIBUTES), 'Thre');
+    UmOutputHandleArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
+    KmDestinationStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
+    KmSourceStringArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, KmEventNameStringLength, 'Thre');
+    KmObjectAttributeArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, sizeof(OBJECT_ATTRIBUTES), 'Thre');
+    KmOutputHandleArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
+    GameEProcessOutputArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
+    CheatEProcessOutputArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
+    SystemEProcessOutputArg = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
+    InitStackAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, STACK_ALLOC_SIZE, 'Thre');
+    MainStackAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, STACK_ALLOC_SIZE, 'Thre');
+    DummyMemoryAllocation = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
+    CurrentStackOffsetAddress = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
+    StackLimitStoreAddress = KernelCaller.Call<void*, SIZE_T, ULONG>("ExAllocatePool2", (ULONG64)0x40, 0x8, 'Thre');
 }
 
 void MemoryManager::FreeMemory()
