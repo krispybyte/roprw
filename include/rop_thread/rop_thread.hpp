@@ -17,6 +17,8 @@ private:
 	void BuildMainStack(StackManager* Stack, const SharedMemoryData* SharedMem);
 	void CreateEventObjects();
 	void SendPacket();
+	void SendReadRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size);
+	void SendWriteRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size);
 public:
 	RopThreadManager(Driver::ArbitraryCaller& _KernelCaller) : KernelCaller(_KernelCaller)
 	{
@@ -46,6 +48,33 @@ public:
 
 	void SpawnThread();
 	void SendTargetProcessPid(const int TargetPid);
-	void SendReadRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size);
-	void SendWriteRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size);
+
+	template<typename T>
+	T Read(const std::uint64_t Address)
+	{
+		static_assert(std::is_trivially_copyable_v<T>, "RopThreadManager::Read<T> only supports trivially copyable types");
+
+		std::byte Buffer[sizeof(T)];
+		const T* BufferPtr = reinterpret_cast<T*>(Buffer);
+
+		SendReadRequest(
+			Address,
+			reinterpret_cast<std::uint64_t>(BufferPtr),
+			sizeof(T)
+		);
+
+		return *BufferPtr;
+	}
+
+	template<typename T>
+	void Write(const std::uint64_t Address, const T& Value)
+	{
+		static_assert(std::is_trivially_copyable_v<T>, "RopThreadManager::Write<T> only supports trivially copyable types");
+
+		SendWriteRequest(
+			reinterpret_cast<std::uint64_t>(&Value),
+			Address,
+			sizeof(T)
+		);
+	}
 };

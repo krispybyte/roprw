@@ -58,10 +58,8 @@ int main()
 
     const std::uint64_t NotepadBase = Utils::GetModuleBaseAddress(TargetPid, "notepad.exe");
 
-    void* ReadBuffer = malloc(4096);
-    RtlZeroMemory(ReadBuffer, 4096);
-    RopThread.SendReadRequest(NotepadBase, (std::uint64_t)ReadBuffer, 8);
-    printf("read 8 bytes: 0x%p\n", *(void**)ReadBuffer);
+    void* ReadBuffer = RopThread.Read<void*>(NotepadBase);
+    printf("read 8 bytes: 0x%p\n", ReadBuffer);
 
     std::cin.get();
 
