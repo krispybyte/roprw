@@ -97,7 +97,7 @@ void RopThreadManager::SendPacket()
 void RopThreadManager::SpawnThread()
 {
     // mov rdx, qword ptr [rcx + 0x50]; mov rbp, qword ptr [rcx + 0x18]; mov rsp, qword ptr [rcx + 0x10]; jmp rdx;
-    void* BootstrapGadget = (void*)(Globals::KernelBase + 0x69cd70);
+    void* BootstrapGadget = (void*)(Globals::KernelBase + 0x69ce00);
 
     HANDLE KernelThreadHandle;
     NTSTATUS ThreadCreationStatus = KernelCaller.Call<NTSTATUS, HANDLE*, ULONG, OBJECT_ATTRIBUTES*, HANDLE, void*, void*, void*>(
