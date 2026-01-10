@@ -11,22 +11,19 @@ int main()
     // the kernel's module base, and system thread start addresses.
     if (!Utils::EnableDebugPrivilege())
     {
-        std::exception("Failed to enable debug privileges");
-        return EXIT_FAILURE;
+        throw std::runtime_error("Failed to enable debug privileges");
     }
 
     Globals::KernelBase = Driver::GetKernelModuleBase();
     if (!Globals::KernelBase)
     {
-        std::exception("Failed to find ntoskrnl.exe base");
-        return EXIT_FAILURE;
+        throw std::runtime_error("Failed to find ntoskrnl.exe base");
     }
 
     const std::uintptr_t RandomValidThreadAddress = Utils::FindRandomValidThreadAddress();
     if (!RandomValidThreadAddress)
     {
-        std::exception("Failed to find a random valid thread address");
-        return EXIT_FAILURE;
+        throw std::runtime_error("Failed to find a random valid thread address");
     }
 
     // We no longer need this debug privilege, and it might
@@ -36,8 +33,7 @@ int main()
     Globals::WindowsBuild = Utils::GetWindowsBuildNumber();
     if (Globals::WindowsBuild == 0)
     {
-        std::exception("Failed to find the windows build being used");
-        return EXIT_FAILURE;
+        throw std::runtime_error("Failed to find the windows build being used");
     }
 
     std::printf("[+] Windows build: %d\n", Globals::WindowsBuild);

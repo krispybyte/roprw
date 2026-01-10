@@ -1,5 +1,6 @@
 #pragma once
 #include "kernel_addresses.hpp"
+#include <stdexcept>
 
 namespace Driver
 {
@@ -35,11 +36,15 @@ namespace Driver
 			);
 
 			if (DriverHandle == INVALID_HANDLE_VALUE)
-				throw std::exception("Failed opening a handle to the driver");
+			{
+				throw std::runtime_error("Failed opening a handle to the driver");
+			}
 
 			NtoskrnlBase = Driver::GetKernelModuleBase();
 			if (!NtoskrnlBase)
-				throw std::exception("Failed getting ntoskrnl.exe module base");
+			{
+				throw std::runtime_error("Failed getting ntoskrnl.exe module base");
+			}
 		}
 	public:
 		~Athpexnt()

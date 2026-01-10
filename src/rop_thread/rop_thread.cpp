@@ -1,5 +1,6 @@
 #include <include/rop_thread/rop_thread.hpp>
 #include <include/utils/utils.hpp>
+#include <stdexcept>
 
 void RopThreadManager::BuildInitStack(StackManager* Stack, StackManager* PivotStack, const SharedMemoryData* SharedMem)
 {
@@ -81,7 +82,7 @@ void RopThreadManager::CreateEventObjects()
 
     if (UmEvent == INVALID_HANDLE_VALUE || KmEvent == INVALID_HANDLE_VALUE)
     {
-        std::exception("Failed to create synchronization event objects");
+        throw std::runtime_error("Failed to create synchronization event objects");
     }
 }
 
@@ -113,7 +114,7 @@ void RopThreadManager::SpawnThread()
 
     if (!NT_SUCCESS(ThreadCreationStatus))
     {
-        std::exception("PsCreateSystemThread failed");
+        throw std::runtime_error("PsCreateSystemThread failed");
     }
 
     KernelCaller.Call<void*, HANDLE>("ZwClose", KernelThreadHandle);

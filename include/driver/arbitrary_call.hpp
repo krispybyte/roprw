@@ -2,6 +2,8 @@
 #include <include/driver/primitives.hpp>
 #include <unordered_map>
 #include <include/globals.hpp>
+#include <stdexcept>
+#include <stdexcept>
 
 namespace Driver
 {
@@ -28,22 +30,19 @@ namespace Driver
 			const HMODULE LibraryAddress = LoadLibraryA(FunctionModuleName.data());
 			if (!LibraryAddress)
 			{
-				std::exception("Failed to load library for arbitrary caller");
-				return;
+				throw std::runtime_error("Failed to load library for arbitrary caller");
 			}
 
 			this->UmFunctionAddress = reinterpret_cast<std::uintptr_t>(GetProcAddress(LibraryAddress, FunctionToPatch.data()));
 			if (!this->UmFunctionAddress)
 			{
-				std::exception("Failed to locate arbitrary caller usermode function address");
-				return;
+				throw std::runtime_error("Failed to locate arbitrary caller usermode function address");
 			}
 
 			this->KmFunctionAddress = NtoskrnlBase + Driver::GetKernelFunctionOffset(FunctionToPatch.data());
 			if (!this->KmFunctionAddress)
 			{
-				std::exception("Failed to locate arbitrary caller kernel function address");
-				return;
+				throw std::runtime_error("Failed to locate arbitrary caller kernel function address");
 			}
 		}
 		~ArbitraryCaller() = default;
