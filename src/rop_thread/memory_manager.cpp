@@ -30,7 +30,24 @@ void MemoryManager::AllocateMemory()
 
 void MemoryManager::FreeMemory()
 {
-    // TODO: Implement this function.
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", KernelSharedMemoryAllocation, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", PivotDataAllocation, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", UmDestinationStringArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", UmSourceStringArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", UmObjectAttributeArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", UmOutputHandleArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", KmDestinationStringArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", KmSourceStringArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", KmObjectAttributeArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", KmOutputHandleArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", GameEProcessOutputArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", CheatEProcessOutputArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", SystemEProcessOutputArg, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", InitStackAllocation, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", MainStackAllocation, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", DummyMemoryAllocation, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", CurrentStackOffsetAddress, ALLOC_TAG);
+    KernelCaller.Call<void*, void*, ULONG>("ExFreePoolWithTag", StackLimitStoreAddress, ALLOC_TAG);
 }
 
 void MemoryManager::InitializeMemory(void* InitStackData, const std::size_t InitStackSize, void* MainStackData, const std::size_t MainStackSize)
