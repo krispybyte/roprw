@@ -1,5 +1,5 @@
 ## roprw
-An x86_64 Windows kernel implant exposing a read/write primitive for usermode, executed using [ROP (return oriented programming)](https://en.wikipedia.org/wiki/Return-oriented_programming).\
+An x86_64 Windows kernel implant exposing a read/write primitive for usermode, executed using ROP ([return oriented programming](https://en.wikipedia.org/wiki/Return-oriented_programming)).\
 roprw is designed to provide a proof of concept for evading detection from video game anti-cheats using ROP.
 
 ![alt text](assets/demo_screenshot.png)
