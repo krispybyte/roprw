@@ -148,22 +148,26 @@ std::uint64_t RopThreadManager::GetModuleBase(const wchar_t* ModuleName)
 
     while (CurrentEntry && CurrentEntry != ListHead)
     {
-        // offsets relative to InMemoryOrderLinks pointer (struct offset 0x10):
-        // DllBase at struct 0x30 -> link + 0x20
-        // BaseDllName UNICODE_STRING at struct 0x58 -> link + 0x48
-        //   .Length (USHORT) at +0x48, .Buffer (PWSTR) at +0x50
-        const std::uint16_t NameLength = Read<std::uint16_t>(CurrentEntry + 0x48);
+        // Read<T> only works with sizeof(T) == 8, the ROP chain hardcodes
+        // MmCopyVirtualMemory's size arg to sizeof(void*)
+        const std::uint64_t NameData = Read<std::uint64_t>(CurrentEntry + 0x48);
+        const std::uint16_t NameLength = static_cast<std::uint16_t>(NameData & 0xFFFF);
         const std::size_t NameCharCount = NameLength / sizeof(wchar_t);
 
         if (NameCharCount > 0 && NameCharCount == TargetLength)
         {
-            const std::uint64_t NameBuffer = Read<std::uint64_t>(CurrentEntry + 0x50);
+            const std::uint64_t NameBufferPtr = Read<std::uint64_t>(CurrentEntry + 0x50);
 
-            if (NameBuffer)
+            if (NameBufferPtr)
             {
                 wchar_t NameBuf[MAX_PATH] = {};
-                const std::size_t ReadSize = min(NameCharCount * sizeof(wchar_t), sizeof(NameBuf) - sizeof(wchar_t));
-                SendReadRequest(NameBuffer, reinterpret_cast<std::uint64_t>(NameBuf), ReadSize);
+                const std::size_t CharsToRead = min(NameCharCount, static_cast<std::size_t>(MAX_PATH - 1));
+
+                for (std::size_t i = 0; i < CharsToRead; i += 4)
+                {
+                    const std::uint64_t Chunk = Read<std::uint64_t>(NameBufferPtr + i * sizeof(wchar_t));
+                    *reinterpret_cast<std::uint64_t*>(&NameBuf[i]) = Chunk;
+                }
 
                 if (_wcsicmp(NameBuf, ModuleName) == 0)
                     return Read<std::uint64_t>(CurrentEntry + 0x20);
