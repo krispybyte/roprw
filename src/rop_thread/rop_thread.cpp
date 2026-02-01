@@ -128,12 +128,23 @@ void RopThreadManager::SendTargetProcessPid(const int TargetPid)
 
 void RopThreadManager::SendReadRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size)
 {
+    // spin on dest directly - MmCopyVirtualMemory overwrites this
+    // before the kernel signals KmEvent
+    *reinterpret_cast<volatile std::uint64_t*>(DestAddress) = 0xC0FEBABEC0FEBABE;
+
     SharedMemory->WriteSrcEProcess = SharedMemory->GameEProcess;
     SharedMemory->WriteDstEProcess = SharedMemory->CheatEProcess;
     SharedMemory->WriteSrcAddress = SourceAddress;
     SharedMemory->WriteDstAddress = DestAddress;
     SharedMemory->WriteSize = Size;
-    SendPacket();
+
+    SetEvent(UmEvent);
+
+    volatile std::uint64_t* Dest = reinterpret_cast<volatile std::uint64_t*>(DestAddress);
+    while (*Dest == 0xC0FEBABEC0FEBABE) {}
+
+    // drain the event so it doesn't leak into the next operation
+    WaitForSingleObject(KmEvent, INFINITE);
 }
 
 void RopThreadManager::SendWriteRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size)
@@ -143,5 +154,8 @@ void RopThreadManager::SendWriteRequest(const std::uint64_t SourceAddress, const
     SharedMemory->WriteSrcAddress = SourceAddress;
     SharedMemory->WriteDstAddress = DestAddress;
     SharedMemory->WriteSize = Size;
-    SendPacket();
+
+    SetEvent(UmEvent);
+
+    while (WaitForSingleObject(KmEvent, 0) != WAIT_OBJECT_0) {}
 }
