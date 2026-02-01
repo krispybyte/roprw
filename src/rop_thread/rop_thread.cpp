@@ -122,12 +122,14 @@ void RopThreadManager::SpawnThread()
 
 void RopThreadManager::SendTargetProcessPid(const int TargetPid)
 {
+    std::lock_guard<std::mutex> Lock(PacketMutex);
     SharedMemory->TargetPid = TargetPid;
     SendPacket();
 }
 
 void RopThreadManager::SendReadRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size)
 {
+    std::lock_guard<std::mutex> Lock(PacketMutex);
     SharedMemory->WriteSrcEProcess = SharedMemory->GameEProcess;
     SharedMemory->WriteDstEProcess = SharedMemory->CheatEProcess;
     SharedMemory->WriteSrcAddress = SourceAddress;
@@ -138,6 +140,7 @@ void RopThreadManager::SendReadRequest(const std::uint64_t SourceAddress, const 
 
 void RopThreadManager::SendWriteRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size)
 {
+    std::lock_guard<std::mutex> Lock(PacketMutex);
     SharedMemory->WriteSrcEProcess = SharedMemory->CheatEProcess;
     SharedMemory->WriteDstEProcess = SharedMemory->GameEProcess;
     SharedMemory->WriteSrcAddress = SourceAddress;
