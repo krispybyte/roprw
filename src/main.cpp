@@ -62,7 +62,7 @@ int main()
 
     RopThread.SendTargetProcessPid(TargetPid);
 
-    const std::uint64_t TargetProcessBase = Utils::GetModuleBaseAddress(TargetPid, TARGET_PROCESS_NAME);
+    const std::uint64_t TargetProcessBase = RopThread.GetModuleBase(L"notepad.exe");
 
     void* ReadBuffer = RopThread.Read<void*>(TargetProcessBase);
     printf("[+] Read 8 bytes from process %s: 0x%p\n", TARGET_PROCESS_NAME, ReadBuffer);

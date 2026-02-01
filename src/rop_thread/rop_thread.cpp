@@ -126,6 +126,56 @@ void RopThreadManager::SendTargetProcessPid(const int TargetPid)
     SendPacket();
 }
 
+std::uint64_t RopThreadManager::GetModuleBase(const wchar_t* ModuleName)
+{
+    const std::uint64_t PebAddress = KernelCaller.Call<std::uint64_t, std::uint64_t>(
+        "PsGetProcessPeb", SharedMemory->GameEProcess
+    );
+
+    if (!PebAddress)
+        return 0;
+
+    // PEB->Ldr (+0x18)
+    const std::uint64_t LdrAddress = Read<std::uint64_t>(PebAddress + 0x18);
+    if (!LdrAddress)
+        return 0;
+
+    // PEB_LDR_DATA->InMemoryOrderModuleList (+0x20), read Flink
+    const std::uint64_t ListHead = LdrAddress + 0x20;
+    std::uint64_t CurrentEntry = Read<std::uint64_t>(ListHead);
+
+    const std::size_t TargetLength = wcslen(ModuleName);
+
+    while (CurrentEntry && CurrentEntry != ListHead)
+    {
+        // offsets relative to InMemoryOrderLinks pointer (struct offset 0x10):
+        // DllBase at struct 0x30 -> link + 0x20
+        // BaseDllName UNICODE_STRING at struct 0x58 -> link + 0x48
+        //   .Length (USHORT) at +0x48, .Buffer (PWSTR) at +0x50
+        const std::uint16_t NameLength = Read<std::uint16_t>(CurrentEntry + 0x48);
+        const std::size_t NameCharCount = NameLength / sizeof(wchar_t);
+
+        if (NameCharCount > 0 && NameCharCount == TargetLength)
+        {
+            const std::uint64_t NameBuffer = Read<std::uint64_t>(CurrentEntry + 0x50);
+
+            if (NameBuffer)
+            {
+                wchar_t NameBuf[MAX_PATH] = {};
+                const std::size_t ReadSize = min(NameCharCount * sizeof(wchar_t), sizeof(NameBuf) - sizeof(wchar_t));
+                SendReadRequest(NameBuffer, reinterpret_cast<std::uint64_t>(NameBuf), ReadSize);
+
+                if (_wcsicmp(NameBuf, ModuleName) == 0)
+                    return Read<std::uint64_t>(CurrentEntry + 0x20);
+            }
+        }
+
+        CurrentEntry = Read<std::uint64_t>(CurrentEntry);
+    }
+
+    return 0;
+}
+
 void RopThreadManager::SendReadRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size)
 {
     SharedMemory->WriteSrcEProcess = SharedMemory->GameEProcess;
