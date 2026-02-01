@@ -50,6 +50,7 @@ public:
 
 	void SpawnThread();
 	void SendTargetProcessPid(const int TargetPid);
+	std::uint64_t GetModuleBase(const wchar_t* ModuleName);
 
 	template<typename T>
 	T Read(const std::uint64_t Address)

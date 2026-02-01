@@ -127,6 +127,60 @@ void RopThreadManager::SendTargetProcessPid(const int TargetPid)
     SendPacket();
 }
 
+std::uint64_t RopThreadManager::GetModuleBase(const wchar_t* ModuleName)
+{
+    const std::uint64_t PebAddress = KernelCaller.Call<std::uint64_t, std::uint64_t>(
+        "PsGetProcessPeb", SharedMemory->GameEProcess
+    );
+
+    if (!PebAddress)
+        return 0;
+
+    // PEB->Ldr (+0x18)
+    const std::uint64_t LdrAddress = Read<std::uint64_t>(PebAddress + 0x18);
+    if (!LdrAddress)
+        return 0;
+
+    // PEB_LDR_DATA->InMemoryOrderModuleList (+0x20), read Flink
+    const std::uint64_t ListHead = LdrAddress + 0x20;
+    std::uint64_t CurrentEntry = Read<std::uint64_t>(ListHead);
+
+    const std::size_t TargetLength = wcslen(ModuleName);
+
+    while (CurrentEntry && CurrentEntry != ListHead)
+    {
+        // Read<T> only works with sizeof(T) == 8, the ROP chain hardcodes
+        // MmCopyVirtualMemory's size arg to sizeof(void*)
+        const std::uint64_t NameData = Read<std::uint64_t>(CurrentEntry + 0x48);
+        const std::uint16_t NameLength = static_cast<std::uint16_t>(NameData & 0xFFFF);
+        const std::size_t NameCharCount = NameLength / sizeof(wchar_t);
+
+        if (NameCharCount > 0 && NameCharCount == TargetLength)
+        {
+            const std::uint64_t NameBufferPtr = Read<std::uint64_t>(CurrentEntry + 0x50);
+
+            if (NameBufferPtr)
+            {
+                wchar_t NameBuf[MAX_PATH] = {};
+                const std::size_t CharsToRead = min(NameCharCount, static_cast<std::size_t>(MAX_PATH - 1));
+
+                for (std::size_t i = 0; i < CharsToRead; i += 4)
+                {
+                    const std::uint64_t Chunk = Read<std::uint64_t>(NameBufferPtr + i * sizeof(wchar_t));
+                    *reinterpret_cast<std::uint64_t*>(&NameBuf[i]) = Chunk;
+                }
+
+                if (_wcsicmp(NameBuf, ModuleName) == 0)
+                    return Read<std::uint64_t>(CurrentEntry + 0x20);
+            }
+        }
+
+        CurrentEntry = Read<std::uint64_t>(CurrentEntry);
+    }
+
+    return 0;
+}
+
 void RopThreadManager::SendReadRequest(const std::uint64_t SourceAddress, const std::uint64_t DestAddress, const std::size_t Size)
 {
     std::lock_guard<std::mutex> Lock(PacketMutex);
