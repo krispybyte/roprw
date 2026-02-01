@@ -2,6 +2,7 @@
 #include <include/rop_thread/stack_manager.hpp>
 #include <include/rop_thread/memory_manager.hpp>
 #include <include/driver/arbitrary_call.hpp>
+#include <mutex>
 
 class RopThreadManager
 {
@@ -13,6 +14,7 @@ private:
 	SharedMemoryData* SharedMemory = nullptr;
 	HANDLE KmEvent = INVALID_HANDLE_VALUE;
 	HANDLE UmEvent = INVALID_HANDLE_VALUE;
+	std::mutex PacketMutex;
 	void BuildInitStack(StackManager* Stack, StackManager* PivotStack, const SharedMemoryData* SharedMem);
 	void BuildMainStack(StackManager* Stack, const SharedMemoryData* SharedMem);
 	void CreateEventObjects();
